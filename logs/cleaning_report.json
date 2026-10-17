@@ -1,0 +1,59 @@
+{
+  "resumes": {
+    "rows_raw": 2484,
+    "missing_before": {
+      "ID": 0,
+      "Resume_str": 0,
+      "Resume_html": 0,
+      "Category": 0
+    },
+    "rows_clean": 2439,
+    "dropped": {
+      "dropped_outlier_long": 42,
+      "dropped_duplicate_exact": 2,
+      "dropped_missing": 1
+    },
+    "outlier_rules": {
+      "min_words": 50,
+      "max_words_iqr_fence": 1778.0,
+      "fence_k": 3.0
+    },
+    "classes": 24
+  },
+  "jobs": {
+    "rows_raw": 123849,
+    "missing_before": {
+      "job_id": 0,
+      "company_name": 1719,
+      "title": 0,
+      "description": 7,
+      "max_salary": 94056,
+      "pay_period": 87776,
+      "location": 0,
+      "views": 1689,
+      "min_salary": 94056,
+      "formatted_work_type": 0,
+      "applies": 100529,
+      "remote_allowed": 108603,
+      "formatted_experience_level": 29409,
+      "skills_desc": 121410
+    },
+    "sampled_to": 40000,
+    "rows_clean": 37162,
+    "dropped": {
+      "dropped_duplicate_repost": 2560,
+      "dropped_outlier_short": 207,
+      "dropped_outlier_long": 68,
+      "dropped_missing": 3
+    },
+    "outlier_rules": {
+      "min_words": 30,
+      "max_words_iqr_fence": 1896.0,
+      "salary_winsorised_to": [
+        92.0,
+        297157.0
+      ]
+    },
+    "salary_missing_share": 0.749
+  }
+}

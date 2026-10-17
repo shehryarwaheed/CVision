@@ -1,0 +1,66 @@
+{
+  "collected_at_utc": "2026-10-17T10:57:50+00:00",
+  "datasets": {
+    "resumes": {
+      "status": "ok",
+      "source": "Kaggle",
+      "source_url": "https://www.kaggle.com/datasets/snehaanbhawal/resume-dataset",
+      "kaggle_slug": "snehaanbhawal/resume-dataset",
+      "purpose": "CV text + job category; used for CV-quality features and section/writing analysis.",
+      "file": "Resume.csv",
+      "size_mb": 56.27,
+      "sha256": "816a7cd985a9a41e3ce8d1e83cb7e1beb1e854a89c1cf1fd0d75494faaa0559d",
+      "rows": 2484,
+      "columns": [
+        "ID",
+        "Resume_str",
+        "Resume_html",
+        "Category"
+      ]
+    },
+    "jobs": {
+      "status": "ok",
+      "source": "Kaggle",
+      "source_url": "https://www.kaggle.com/datasets/arshkon/linkedin-job-postings",
+      "kaggle_slug": "arshkon/linkedin-job-postings",
+      "purpose": "Job ads; used for role-fit scoring and the skill-gap chart.",
+      "file": "postings.csv",
+      "size_mb": 516.84,
+      "sha256": "de33f27c8d1b226014e0cede003404e9b0acb66db718671fda9b3e3538eca6ea",
+      "rows": 123849,
+      "columns": [
+        "job_id",
+        "company_name",
+        "title",
+        "description",
+        "max_salary",
+        "pay_period",
+        "location",
+        "company_id",
+        "views",
+        "med_salary",
+        "min_salary",
+        "formatted_work_type",
+        "applies",
+        "original_listed_time",
+        "remote_allowed",
+        "job_posting_url",
+        "application_url",
+        "application_type",
+        "expiry",
+        "closed_time",
+        "formatted_experience_level",
+        "skills_desc",
+        "listed_time",
+        "posting_domain",
+        "sponsored",
+        "work_type",
+        "currency",
+        "compensation_type",
+        "normalized_salary",
+        "zip_code",
+        "fips"
+      ]
+    }
+  }
+}

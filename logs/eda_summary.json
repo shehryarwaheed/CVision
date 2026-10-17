@@ -1,0 +1,7 @@
+{
+  "cv_rows": 2439,
+  "cv_class_imbalance_ratio": 5.67,
+  "cv_median_words": 751.0,
+  "job_rows": 37162,
+  "job_median_words": 482.0
+}

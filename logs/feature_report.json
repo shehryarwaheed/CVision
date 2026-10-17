@@ -1,0 +1,94 @@
+{
+  "resume_log1p_columns": [
+    "avg_sentence_len",
+    "metric_number_count",
+    "percent_count",
+    "numbers_per_100_words",
+    "quantified_sentence_ratio",
+    "action_verb_count"
+  ],
+  "resumes": {
+    "rows": 2439,
+    "classes": 24,
+    "train_rows": 1951,
+    "test_rows": 488,
+    "numeric_features": [
+      "word_count",
+      "sentence_count",
+      "avg_sentence_len",
+      "avg_word_len",
+      "lexical_diversity",
+      "metric_number_count",
+      "percent_count",
+      "numbers_per_100_words",
+      "quantified_sentence_ratio",
+      "action_verb_count",
+      "action_verbs_per_100_words",
+      "section_count",
+      "skill_count"
+    ],
+    "tfidf_vocab_size": 5000,
+    "label_mapping": {
+      "Accountant": 0,
+      "Advocate": 1,
+      "Agriculture": 2,
+      "Apparel": 3,
+      "Arts": 4,
+      "Automobile": 5,
+      "Aviation": 6,
+      "Banking": 7,
+      "Bpo": 8,
+      "Business-Development": 9,
+      "Chef": 10,
+      "Construction": 11,
+      "Consultant": 12,
+      "Designer": 13,
+      "Digital-Media": 14,
+      "Engineering": 15,
+      "Finance": 16,
+      "Fitness": 17,
+      "Healthcare": 18,
+      "Hr": 19,
+      "Information-Technology": 20,
+      "Public-Relations": 21,
+      "Sales": 22,
+      "Teacher": 23
+    }
+  },
+  "job_log1p_columns": [
+    "title_word_count",
+    "skills_desc_len",
+    "skill_count",
+    "salary_yearly",
+    "views",
+    "applies"
+  ],
+  "jobs": {
+    "rows": 37162,
+    "numeric_features": [
+      "word_count",
+      "title_word_count",
+      "skills_desc_len",
+      "skill_count",
+      "salary_yearly",
+      "views",
+      "applies"
+    ],
+    "onehot_columns": [
+      "work_type_contract",
+      "work_type_full_time",
+      "work_type_internship",
+      "work_type_other",
+      "work_type_part_time",
+      "work_type_temporary",
+      "work_type_volunteer",
+      "exp_level_associate",
+      "exp_level_director",
+      "exp_level_entry_level",
+      "exp_level_executive",
+      "exp_level_internship",
+      "exp_level_mid_senior_level",
+      "exp_level_unknown"
+    ]
+  }
+}
