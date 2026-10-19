@@ -133,7 +133,7 @@ def fig_skill_gap_preview():
 
 
 def fig_scaling_effect(raw_feat):
-    col = "word_count"
+    col = "metric_number_count"
     raw = raw_feat[col].astype(float)
     z = raw_feat[f"{col}_z"]
     fig, axes = plt.subplots(1, 2, figsize=(9, 3.6))
