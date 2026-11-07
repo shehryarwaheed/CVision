@@ -32,3 +32,13 @@ report/*.fdb_latexmk
 Thumbs.db
 .vscode/
 .idea/
+# --- model weights & artifacts (host externally, link in README) ---
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.joblib
+*.pkl
+*.npz
+*.ckpt
+*.safetensors
