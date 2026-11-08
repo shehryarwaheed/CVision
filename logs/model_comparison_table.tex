@@ -1,0 +1,13 @@
+\begin{table}
+\caption{Empirical Model Comparison on the 15\% Test Split}
+\label{tab:model_comparison}
+\begin{tabular}{lcccccc}
+\toprule
+Model Architecture & Accuracy & Macro Precision & Macro Recall & Macro F1 & Weighted F1 & OvR AUC-ROC \\
+\midrule
+Random Forest & 0.7377 & 0.7281 & 0.7189 & 0.6940 & 0.7149 & 0.9721 \\
+Logistic Regression & 0.6284 & 0.5870 & 0.6214 & 0.5856 & 0.6049 & 0.9501 \\
+Dummy Baseline & 0.0464 & 0.0019 & 0.0417 & 0.0037 & 0.0041 & 0.5000 \\
+\bottomrule
+\end{tabular}
+\end{table}
