@@ -205,15 +205,15 @@ def prepare_data_splits(random_state=42, force_recompute=False):
 
 
 def get_dataloaders(batch_size=32, random_state=42):
-    """Returns PyTorch DataLoaders and class weights for Member 2's deep model."""
     data = prepare_data_splits(random_state=random_state)
     train_ds = ResumeTorchDataset(*data["train"])
     val_ds = ResumeTorchDataset(*data["val"])
     test_ds = ResumeTorchDataset(*data["test"])
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    # In src/dataset.py -> get_dataloaders():
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, drop_last=False)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, drop_last=False)
 
     return train_loader, val_loader, test_loader, data["class_weights"], data
 
