@@ -11,6 +11,9 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[hidelinks]{hyperref}
 \usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
+\usepackage{float}
 \captionsetup{font=small,labelfont=bf}
 \setlist{itemsep=2pt,topsep=4pt}
 \setlength{\parskip}{4pt}
@@ -21,10 +24,10 @@
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 
 \title{\textbf{CVision}\\[2pt]
-  \large Deliverable 1: Problem Definition and Data Foundations\\[2pt]
+  \large Deliverable 2: Model Architecture and Empirical Evaluation\\[2pt]
   \normalsize Track A: Application Development}
 \author{Aqsa Ehtesham (24L-3017)\\ M. Shehryar Waheed (24L-3023)}
-\date{October 2026}
+\date{November 2026}
 
 \begin{document}
 \maketitle
@@ -43,7 +46,12 @@ and 37{,}162 postings), the feature strategy (normalisation, scaling and
 encoding), and exploratory data analysis. All code is in the
 \texttt{data\_scripts/} folder and the evidence files are in
 \texttt{logs/}.
+Deliverable~2 adds Phase~3 (a PyTorch dual-branch network over TF-IDF text and
+13 structural features, with a 10-trial hyperparameter study) and Phase~4
+(stratified 70/15/15 evaluation of five models with Accuracy, Precision, Recall,
+Macro-F1 and AUC-ROC, plus error analysis and a bias check).
 \end{abstract}
+
 
 \tableofcontents
 \newpage
@@ -374,9 +382,10 @@ Figure~\ref{fig:scaling} shows the effect on one feature.
   yearly salaries are filled with the median.
 \end{itemize}
 
-\textbf{Train/test split.} The 2{,}439 CVs are split 80/20 with
-stratification by category (random seed 42) into 1{,}951 training and
-488 test CVs. No separate validation split has been created yet.
+\textbf{Train/validation/test split.} The 2{,}439 CVs are split with
+stratification by category (random seed 42) into 70\% training (1{,}707),
+15\% validation (366) and 15\% test (366) CVs. Scalers and the TF-IDF
+vectoriser are fitted on the training split only, so there is no leakage.
 
 \FloatBarrier
 % ---------------------------------------------------------------------
@@ -408,8 +417,9 @@ which gives a largest-to-smallest class ratio of 5.67 (5.45 before cleaning, wit
 on this distribution would see far fewer examples of these categories
 and could perform worse on them, and any per-category statistic for BPO
 or Automobile rests on very few CVs. We therefore use a stratified
-train/test split (1{,}951 / 488 CVs), report macro-averaged metrics in
-addition to accuracy, and plan to apply class weights during training.
+70/15/15 train/validation/test split (1{,}707 / 366 / 366 CVs), report
+macro-averaged metrics in addition to accuracy, and apply class weights
+during training.
 
 \begin{figure}[htbp]
   \centering
@@ -638,7 +648,379 @@ computed on the training split only, so no information from the test
 set leaks into the features.
 
 \FloatBarrier
-% =====================================================================
+
+\section{Phase 3: Model Architecture and Implementation}
+
+\subsection{Framework and Design}
+The model is implemented in PyTorch (\texttt{src/deep\_model.py}); the
+baselines use Scikit-Learn. The task is 24-class classification of a CV into
+its job category, using two inputs: the 5{,}000-dimensional TF-IDF vector
+$x_t$ and the 13 scaled structural features $x_s$ from Section~\ref{sec:features}.
+The network has two branches that are fused:
+\begin{align*}
+h_t &= \mathrm{Drop}_{0.20}\big(\mathrm{ReLU}(\mathrm{BN}(W_t x_t + b_t))\big) \in \mathbb{R}^{256}\\
+h_s &= \mathrm{Drop}_{0.10}\big(\mathrm{ReLU}(\mathrm{BN}(W_s x_s + b_s))\big) \in \mathbb{R}^{32}\\
+h_f &= \mathrm{Drop}_{0.15}\big(\mathrm{ReLU}(\mathrm{BN}(W_f [h_t;h_s] + b_f))\big) \in \mathbb{R}^{128}\\
+z &= W_o h_f + b_o \in \mathbb{R}^{24}, \qquad \hat{p} = \mathrm{softmax}(z)
+\end{align*}
+Figure~\ref{fig:architecture} shows the architecture. The text branch holds
+most of the parameters (1{,}280{,}768 of 1{,}321{,}624) because of the wide
+TF-IDF input. Hidden layers use Kaiming-normal initialisation (suited to
+ReLU) and the output layer uses Xavier-uniform initialisation. Batch
+normalisation stabilises training on this small dataset, and the dropout
+rates are scaled from one base rate: the structural branch uses half of it
+(capped at 0.20) so that its few dense signals are not erased, and the fusion
+layer uses 0.75 of it.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=7mm and 12mm,
+  box/.style={rectangle, draw, rounded corners, minimum width=4.6cm,
+              minimum height=0.9cm, align=center, font=\small},
+  inp/.style={box, fill=blue!10},
+  lay/.style={box, fill=green!10},
+  fus/.style={box, fill=orange!15, minimum width=6cm},
+  out/.style={box, fill=red!10, minimum width=6cm},
+  arr/.style={-{Stealth}, thick}
+]
+\node[inp] (tfidf) {TF-IDF text vector\\(5000)};
+\node[inp, right=of tfidf] (struct) {Structural features\\(13, scaled)};
+\node[lay, below=of tfidf] (l1) {Linear $5000 \to 256$\\BatchNorm, ReLU, Dropout 0.20};
+\node[lay, below=of struct] (l2) {Linear $13 \to 32$\\BatchNorm, ReLU, Dropout 0.10};
+\node[fus] (cat) at ($(l1)!0.5!(l2)-(0,1.9)$) {Concatenate\\$256 + 32 = 288$};
+\node[lay, minimum width=6cm, below=of cat] (h1) {Linear $288 \to 128$\\BatchNorm, ReLU, Dropout 0.15};
+\node[out, below=of h1] (out) {Linear $128 \to 24$ (class logits)\\Weighted cross-entropy loss};
+\draw[arr] (tfidf) -- (l1);
+\draw[arr] (struct) -- (l2);
+\draw[arr] (l1) -- (cat);
+\draw[arr] (l2) -- (cat);
+\draw[arr] (cat) -- (h1);
+\draw[arr] (h1) -- (out);
+\node[font=\footnotesize\itshape, above=2mm of tfidf] {Branch A: text};
+\node[font=\footnotesize\itshape, above=2mm of struct] {Branch B: structure};
+\end{tikzpicture}
+\caption{Dual-branch network (1{,}321{,}624 trainable parameters).
+Dropout rates are those of the selected configuration (base rate 0.2).}
+\label{fig:architecture}
+\end{figure}
+
+\textbf{Ablation.} A second model, the text-only ablation, removes the
+structural branch (fusion input 256 instead of 288). Comparing the two
+measures whether the 13 engineered features add anything beyond the text.
+
+\subsection{Loss Function and Optimiser}
+Training minimises a class-weighted cross-entropy,
+\[
+\mathcal{L} = -\frac{\sum_i w_{y_i}\log \hat{p}_{i,y_i}}{\sum_i w_{y_i}},
+\]
+where $w_c = \dfrac{N}{K\,n_c}$ is the inverse-frequency weight of class $c$,
+$N = 1{,}707$ is the number of training CVs, $K = 24$ the number of classes and
+$n_c$ the number of training CVs in class $c$. A perfectly balanced class gets
+weight 1, and rare categories such as BPO, Automobile and Agriculture get the
+largest weights, so they are not ignored (Section~\ref{sec:eda}). The weights
+are computed on the training split only.
+
+The optimiser is AdamW (Adam with decoupled weight decay) with learning rate
+$10^{-3}$, weight decay $10^{-4}$ and batch size 32. Three further mechanisms
+stabilise training on this small dataset:
+\begin{itemize}
+  \item \emph{Learning-rate scheduling:} a \texttt{ReduceLROnPlateau}
+  scheduler halves the learning rate when the validation loss has not
+  improved for 3 epochs.
+  \item \emph{Gradient clipping:} the gradient norm is clipped to 1.0.
+  \item \emph{Early stopping and checkpointing:} training runs for at most 25
+  epochs and stops after 8 epochs without improvement in validation loss. The
+  weights from the epoch with the lowest validation loss are kept and used for
+  the final test evaluation.
+\end{itemize}
+All runs use random seed 42. The test set is evaluated only once, after
+training has finished and the checkpoint has been chosen.
+
+\subsection{Hyperparameter Tuning}
+Ten configurations were evaluated on the validation split, varying one factor
+at a time from the baseline (learning rate $10^{-3}$, batch size 32, dropout
+0.4, weight decay $10^{-4}$, text width 256). Table~\ref{tab:hyperparameter_tuning}
+lists all of them with the epoch of the best (lowest) validation loss, the
+epoch at which early stopping fired, and the validation Macro-F1 at the
+selected checkpoint, which was the criterion for choosing between
+configurations.
+
+\begingroup
+\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\input{logs/tuning_table.tex}
+\endgroup
+
+\textbf{Justification of the final selection.}
+\begin{itemize}
+  \item \emph{Dropout 0.2} gave the best validation Macro-F1 (0.6333,
+  against 0.5968 for the 0.4 baseline), so it was selected. With the 0.2 base
+  rate the effective rates are 0.20, 0.10 and 0.15 in the three layers.
+  \item \emph{Learning rate $10^{-3}$} was kept: $10^{-2}$ was clearly worse
+  (0.5534, unstable), and $10^{-4}$ had not converged after the full 25 epochs
+  (best epoch 25 of 25).
+  \item \emph{Batch size 32 and weight decay $10^{-4}$} were kept. Batch sizes
+  16 and 64 scored higher than the baseline (0.6186, 0.6184), but both were
+  tested with dropout 0.4, so they were not combined with the winning dropout.
+  Removing weight decay or raising it to $10^{-2}$ lowered the score.
+  \item \emph{Text width 128} did not help (0.5883), so 256 was kept.
+\end{itemize}
+This was a one-factor-at-a-time search, so interactions between settings were
+not explored. Each configuration was run once on a 366-CV validation set, and
+differences of a few hundredths in Macro-F1 may be within run-to-run noise;
+the choice of 0.2 is the best observed, not a proven optimum.
+
+\FloatBarrier
+
+\section{Phase 4: Training and Empirical Evaluation}
+
+\subsection{Validation Strategy}
+The 2{,}439 CVs are split once, with stratification by category and random
+seed 42, into 1{,}707 training, 366 validation and 366 test CVs (70/15/15).
+The training split fits the model, scalers and TF-IDF vocabulary; the
+validation split drives early stopping, checkpoint selection and the
+hyperparameter study; the test split is used once, for the final results.
+Stratification matters here because the rarest category (BPO) has only 21 CVs
+in total, and a random split could leave it almost absent from one split.
+Even so, some test classes are very small (as few as 2 CVs for Automobile and
+4 for BPO), which limits how much any per-class result can be trusted.
+
+\subsection{Evaluation Metrics and Their Justification}
+The categories are imbalanced (largest-to-smallest ratio 5.67), so accuracy
+alone is misleading: a model can score well by doing well on the large
+classes while failing on the small ones. We therefore report:
+\begin{itemize}
+  \item \textbf{Accuracy}, as the familiar overall figure, but not as the
+  main criterion.
+  \item \textbf{Macro-Precision, Macro-Recall and Macro-F1}, which average the
+  per-class scores with equal weight, so BPO counts as much as Information
+  Technology. Macro-F1 is our \emph{primary} metric because it exposes failure
+  on rare classes and balances false alarms (precision) against misses
+  (recall).
+  \item \textbf{Weighted-F1}, which weights each class by its test frequency
+  and shows how the model performs on a typical CV.
+  \item \textbf{One-vs-rest AUC-ROC (macro-averaged)}, which measures how well
+  the predicted probabilities rank the correct class above the others,
+  independently of any decision threshold and of class frequency.
+\end{itemize}
+A chance-level Dummy baseline is included as a floor: it reaches 4.64\%
+accuracy, a Macro-F1 of 0.0037 and an AUC-ROC of exactly 0.5, which shows what
+``no learning'' looks like on these metrics.
+
+\subsection{Training Behaviour}
+Figure~\ref{fig:curves} shows the learning curves of the Dual Branch Net and
+of the text-only ablation. For the Dual Branch Net, the validation loss is
+lowest at epoch 3 (1.437), after which it drifts up to about 1.52, and early
+stopping fires at epoch 11. Meanwhile the training accuracy reaches 100\% by
+epoch 6 and the training loss falls to 0.005, whereas validation accuracy
+stays near 0.67. The network therefore overfits quickly: it has about
+1.3~million parameters and only 1{,}707 training CVs, and dropout and weight
+decay slow this down but do not prevent it. Keeping the epoch-3 checkpoint
+limits the damage. That checkpoint reaches a validation accuracy of 0.678, but
+a test accuracy of 0.617, a gap that is partly the optimism of selecting the
+best epoch on the same validation set.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig10_dual_branch_net_curves.png}\\[4pt]
+  \includegraphics[width=\textwidth]{figures/fig10_text_only_ablation_curves.png}
+  \caption{Loss and accuracy/Macro-F1 curves per epoch. Top: Dual Branch
+  Net. Bottom: text-only ablation.}
+  \label{fig:curves}
+\end{figure}
+
+\subsection{Model Comparison on the Test Set}
+Table~\ref{tab:model_comparison} compares the Dual Branch Net with the
+text-only ablation and with three baselines (Logistic Regression, Random
+Forest and the Dummy classifier), all evaluated on the same 366 test CVs.
+
+\begingroup
+\centering\small\setlength{\tabcolsep}{4pt}
+\input{logs/model_comparison_table.tex}
+\endgroup
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/fig11_roc_curves.png}
+  \caption{One-vs-rest ROC curves on the test split.}
+  \label{fig:roc}
+\end{figure}
+
+\textbf{Findings.}
+\begin{itemize}
+  \item \emph{All learned models are far above the Dummy baseline}
+  (Macro-F1 0.57--0.69 against 0.004), so the TF-IDF text carries a strong
+  signal about the job category.
+  \item \emph{Random Forest is the best model} on every metric (accuracy
+  0.738, Macro-F1 0.694, AUC-ROC 0.972). The neural network does not beat it,
+  and we report this as it is. A plausible explanation is the small training
+  set: tree ensembles are robust on 1{,}707 samples with sparse TF-IDF
+  features, while the network overfits (previous section). We did not test
+  this explanation with further experiments.
+  \item \emph{The Dual Branch Net does not beat Logistic Regression}
+  (Macro-F1 0.574 against 0.586; identical AUC-ROC of 0.950). The extra
+  non-linear capacity brings no gain at this data size.
+  \item \emph{The structural features did not help.} The text-only ablation
+  scores slightly higher than the full dual-branch model on accuracy,
+  Macro-F1 and Weighted-F1 (0.631, 0.595, 0.617 against 0.618, 0.574, 0.610),
+  and slightly lower on AUC-ROC (0.947 against 0.950). This is plausible:
+  the 13 features describe CV \emph{quality} (length, numbers, action verbs)
+  rather than \emph{topic}, so they add little for deciding the job category.
+  They remain useful for the transparent quality score of the final
+  application.
+  \item \emph{Caution on small differences.} The test set has 366 CVs, so one
+  CV is 0.27 percentage points of accuracy, and every model was trained with
+  a single seed. Gaps of one or two points between the neural models and
+  Logistic Regression are within the range that noise could explain; only the
+  Random Forest lead and the gap to the Dummy baseline are clearly larger.
+\end{itemize}
+
+\subsection{Error Analysis}
+Figure~\ref{fig:cm} shows the confusion matrix of the test predictions, and
+Table~\ref{tab:perclass} lists the best and worst categories of the Dual
+Branch Net.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/fig12_confusion_matrix.png}
+  \caption{Confusion matrix on the test split.}
+  \label{fig:cm}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    Category & Precision & Recall & F1 & Test CVs \\
+    \midrule
+    Designer & 0.941 & 0.842 & 0.889 & 19 \\
+    HR & 0.783 & 1.000 & 0.878 & 18 \\
+    Aviation & 0.867 & 0.813 & 0.839 & 16 \\
+    \midrule
+    Healthcare & 0.417 & 0.294 & 0.345 & 17 \\
+    Apparel & 0.333 & 0.294 & 0.313 & 17 \\
+    Consultant & 0.444 & 0.200 & 0.276 & 20 \\
+    Automobile & 0.167 & 0.500 & 0.250 & 2 \\
+    BPO & 0.000 & 0.000 & 0.000 & 4 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Best three and worst five categories of the Dual Branch Net
+  (from \texttt{per\_class\_dual\_branch\_net.csv}).}
+  \label{tab:perclass}
+\end{table}
+
+\textbf{Where the model fails.}
+\begin{itemize}
+  \item \emph{Rare classes.} BPO (4 test CVs) is never predicted correctly
+  (F1 0.00), and Automobile (2 test CVs) reaches only 0.25. These are the
+  categories flagged as under-represented in the EDA, and the inverse-frequency
+  weights were not enough to fix them.
+  \item \emph{Overlapping professions.} The most frequent confusions are
+  between neighbouring occupations: Sales and Apparel (4 CVs each way),
+  Finance and Accountant (3 each way), Consultant predicted as Finance (3) or
+  Information Technology (2), Healthcare predicted as Advocate (4) or HR (3),
+  Aviation predicted as Engineering (3), and Designer predicted as Apparel
+  (2). Such CVs share vocabulary, and a CV with a mixed profile has only one
+  label, so some of these errors reflect label ambiguity and not only model
+  weakness.
+  \item \emph{Not only a data-size problem.} Consultant has 20 test CVs, one
+  of the largest classes, yet an F1 of only 0.28, because consulting CVs
+  describe work in finance, IT and other domains. Class size alone does not
+  explain the errors.
+  \item \emph{Distinctive classes work well.} Designer, HR and Aviation have
+  the clearest vocabulary and reach F1 between 0.84 and 0.89. HR has a
+  recall of 1.00 but a precision of 0.78, because it also absorbs some
+  Healthcare CVs.
+\end{itemize}
+The high AUC-ROC (about 0.95) next to a 62\% accuracy suggests that the correct
+category is often ranked highly even when it is not first. For CVision this
+points to showing the top few candidate categories, and not a single hard label,
+in the final application. We did not compute top-$k$ accuracy in this
+deliverable.
+
+\subsection{Bias Check}
+\label{sec:bias}
+The dataset has no demographic attributes, so we cannot audit subgroups such as
+age or ethnicity directly. We run three audits on the Dual Branch Net instead
+(Table~\ref{tab:bias_audit_dual_branch_net}, Figure~\ref{fig:bias}).
+
+\begingroup
+\centering\small\setlength{\tabcolsep}{4pt}
+\input{logs/bias_table_dual_branch_net.tex}
+\endgroup
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig13_dual_branch_net_bias_check.png}
+  \caption{Bias check of the Dual Branch Net.}
+  \label{fig:bias}
+\end{figure}
+
+\begin{enumerate}
+  \item \textbf{Class representation (clear bias).} The five best-represented
+  categories reach a mean F1 of 0.627, the five least represented only 0.358,
+  a gap of 0.269. Across the 24 classes, F1 is positively correlated with class
+  size (Pearson $r = 0.555$, $p = 0.0049$). The model is therefore less
+  reliable for under-represented occupations, despite the class-weighted loss.
+  This matters for CVision: a CV from a rare category would receive a less
+  trustworthy classification.
+  \item \textbf{Document length (small effect).} Accuracy is 0.623 for short
+  CVs ($<$669 words), 0.623 for medium CVs (669--842) and 0.607 for long CVs
+  ($>$842), with 122 CVs in each group. The long group differs by about two
+  CVs, which is too small to call a bias. The mean prediction confidence
+  rises with length (0.579, 0.601, 0.626) while accuracy does not, so the
+  model is slightly more over-confident on long CVs.
+  \item \textbf{Gender proxy (inconclusive).} We swapped gendered words and
+  pronouns in the test CVs and counted changed predictions. The flip rate is
+  0.00\%, but only 2 of the 366 CVs contained any such feature, so this is
+  weak evidence and not proof of fairness. It also tests only explicit
+  gendered words, not indirect proxies such as names or hobbies.
+\end{enumerate}
+\textbf{Limits and mitigation.} The CVs come from one website with a template
+style, and most of the 24 occupations are non-technical, so these results may
+not transfer to other CV populations. Reasonable next steps are collecting
+more CVs for BPO, Automobile and Agriculture, oversampling them, and testing
+fairness on a dataset that has demographic labels.
+
+\section{Team Contribution Table}
+Table~\ref{tab:contrib} maps the Git commit authors to the project modules.
+Each student appears under two or more Git identities (the account name and the
+name configured on their machine); \texttt{git shortlog -sn --all} shows them.
+The table is reproducible from \texttt{git log -{}-name-only}.
+
+\begin{table}[htbp]
+  \centering
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}X@{}}
+    \toprule
+    Member & Git author names & Modules and work (from the commit history) \\
+    \midrule
+    Aqsa Ehtesham (24L-3017) &
+    \texttt{AqsaEhtesham}, \texttt{Aqsa Ehtesham Khan} (pull-request merges) &
+    \texttt{src/dataset.py} (stratified 70/15/15 split, class weights),
+    \texttt{src/baseline\_models.py} (Dummy, Logistic Regression, Random
+    Forest), \texttt{src/evaluate.py} (metrics, ROC curves, confusion
+    matrices, per-class reports); Deliverable~1 EDA figures, \texttt{eda.py}
+    fixes and the first LaTeX report. \\
+    \addlinespace
+    M.\ Shehryar Waheed (24L-3023) &
+    \texttt{Muhammad Shehryar Waheed} &
+    \texttt{src/deep\_model.py} (dual-branch network),
+    \texttt{src/train.py} (AdamW, weighted loss, scheduler, early stopping),
+    \texttt{src/tune.py} (10-configuration study),
+    \texttt{src/bias\_check.py} (Phase~4 bias audit),
+    \texttt{src/quality\_score.py}; the final comparison run with all five
+    models; Deliverable~1 pipeline (\texttt{data\_scripts/}) and
+    repository set-up. \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Contribution table: Git commit authors and project modules.}
+  \label{tab:contrib}
+\end{table}
+
+\FloatBarrier
+
 \begin{thebibliography}{9}
 
 \bibitem{kaggle_resume}
