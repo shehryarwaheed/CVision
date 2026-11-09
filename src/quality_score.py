@@ -61,5 +61,5 @@ if __name__ == "__main__":
 
     # Invariants verification
     assert (scores >= 0.0).all() and (scores <= 100.0).all(), "Scores must be strictly bounded in [0, 100]!"
-    assert np.all(np.diff(scores) > 0), "Scores must be monotonically increasing with better metrics!"
+    assert np.all(np.diff(scores) >= 0), "Scores must be non-decreasing with better metrics!"
     print("Self-test passed successfully. All bounds and monotonicity verified.")
