@@ -6,7 +6,8 @@ Upload a CV as a PDF and get an overall quality score with a transparent breakdo
 skill-gap chart showing in-demand skills the CV is missing.
 
 > Course project: AI Project, Track A (Application Development)
-> Deliverable 1: Problem Definition and Data Foundations (Phase 1 and Phase 2)
+> Deliverable 1, Problem Definition and Data Foundations, covers Phase 1 and Phase 2
+> Deliverable 2: Model Architecture and Empirical Evaluation (Phase 3 and Phase 4)
 
 **Authors:** Aqsa Ehtesham (24L-3017) and M. Shehryar Waheed (24L-3023)
 
@@ -40,6 +41,8 @@ CVision/
 ├── data/                   # raw + processed data (git-ignored, see below)
 ├── figures/                # EDA charts used in the report
 ├── logs/                   # machine-generated evidence (collection log, cleaning report, ...)
+├── src/                    # Phase 3 and 4 code (dataset, models, training, tuning, evaluation, bias check)
+├── models/                 # trained weights (download link below, not in Git)
 └── report/                 # LaTeX source and compiled PDF
 ```
 
@@ -97,6 +100,22 @@ CVISION_DATA_DIR=/tmp/demo python tests/make_demo_data.py
 CVISION_DATA_DIR=/tmp/demo python data_scripts/run_all.py
 ```
 
+## Run Phase 3 and 4
+```bash
+python src/tune.py        # hyperparameter search
+python src/train.py       # train the dual-branch net and ablation
+python src/evaluate.py    # compare all 5 models
+python src/bias_check.py  # subgroup bias audit
+```
+
+## Model Weights
+
+The trained weights are hosted externally and are not stored in Git:
+
+- **Dual Branch Net (`dual_branch_net.pt`, 5.3 MB):** [Download from Google Drive](https://drive.google.com/file/d/1jTenoWsozCcBcOnhtynoriBH7map32XI/view?usp=drive_link)
+
+After downloading, place the file at `models/dual_branch_net.pt`.
+
 ## What each Phase 2 step does
 
 **Collection (`collect.py`)**: locates or downloads both datasets, profiles them and writes the evidence log.
@@ -115,7 +134,7 @@ CVISION_DATA_DIR=/tmp/demo python data_scripts/run_all.py
 - *Engineered CV features:* length, sentence statistics, lexical diversity, numbers that are not years (a proxy
   for quantified impact), action-verb density, section coverage, skill coverage.
 - *Scaling:* strongly skewed counts get `log1p`, then z-score scaling. Scalers and TF-IDF are fitted on the
-  **training split only** (stratified 80/20) to avoid data leakage.
+  **training split only** (stratified 70/15/15 train/val/test) to avoid data leakage.
 - *Encoding:* CV category to integer label; job work type and experience level to one-hot.
 
 **EDA (`eda.py`)**: nine figures in `figures/`: class distribution, CV length before/after outlier removal,
@@ -128,7 +147,7 @@ feature correlations, missing values, job distributions, a skill demand vs. supp
 | Raw rows | 2,484 | 123,849 |
 | After sampling | n/a | 40,000 |
 | **After cleaning** | **2,439** | **37,162** |
-| Train / test split | 1,951 / 488 (stratified by category) | n/a |
+| Train / val / test split | 1,707 / 366 / 366 (stratified by category) | n/a |
 
 Main findings: the CV classes are imbalanced (largest-to-smallest ratio 5.67; BPO, Automobile and Agriculture
 are under-represented); the job column `skills_desc` is empty for about 98% of postings, so skills must be
@@ -143,12 +162,12 @@ The LaTeX source is `report/report.tex`; the compiled PDF is `report/report.pdf`
 
 ## Team contributions
 
-| Member | Contribution |
-|---|---|
-| Aqsa Ehtesham (24L-3017) | TODO: confirm, e.g. Phase 1 write-up, README, LaTeX report structure |
-| M. Shehryar Waheed (24L-3023) | TODO: confirm, e.g. running the pipeline, EDA interpretation, Phase 2 report sections |
+| Member | Modules | Description |
+|---|---|---|
+| Aqsa Ehtesham (24L-3017) | `src/dataset.py`, `src/baseline_models.py`, `src/evaluate.py`, Phase 1 and 2 foundations | Data loading and stratified 70/15/15 split, baseline models (Dummy, Logistic Regression, Random Forest), evaluation metrics, ROC curves and confusion matrix |
+| M. Shehryar Waheed (24L-3023) | `src/deep_model.py`, `src/train.py`, `src/tune.py`, `src/bias_check.py`, `src/quality_score.py` | PyTorch dual-branch network, training loop with AdamW and weighted loss, 10-trial hyperparameter tuning, Phase 4 bias audit |
 
-_(Replace the TODOs with what each person actually did, and delete this line. The commit history should match.)_
+Individual contributions are verifiable in the Git commit history (`git log --author`).
 
 ## Limitations (to address in later phases)
 
@@ -157,5 +176,5 @@ _(Replace the TODOs with what each person actually did, and delete this line. Th
 - The skill list in `config.py` is a baseline vocabulary of 70 skills matched by exact keywords; later phases will
   extend it from job postings and use embeddings.
 - Salary data is very sparse and a few implausible yearly values remain, so it is only a weak, optional feature.
-- Only a 40,000-posting sample of the job data is used, and no separate validation split exists yet.
+- Only a 40,000-posting sample of the job data is used.
 - No PDF parsing yet; that arrives with the web app.
