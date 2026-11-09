@@ -76,7 +76,7 @@ def evaluate_epoch(model, loader, criterion):
     model.eval()
     total_loss = 0.0
     n_seen = 0
-    all_preds, all_labels, all_probs = [], []
+    all_preds, all_labels, all_probs = [], [], []
 
     for x_text, x_num, targets in loader:
         x_text = x_text.to(DEVICE)
@@ -213,6 +213,13 @@ def run_training(
         history["val_acc"].append(va_acc)
         history["val_macro_f1"].append(va_f1)
 
+        if save_outputs:
+            print(
+                f"Epoch {epoch:02d}/{num_epochs} | "
+                f"Train Loss: {tr_loss:.4f} Acc: {tr_acc:.3f} | "
+                f"Val Loss: {va_loss:.4f} Acc: {va_acc:.3f} Macro-F1: {va_f1:.3f} | "
+                f"LR: {optimizer.param_groups[0]['lr']:.1e}"
+            )
         # Checkpoint selection based on validation loss
         if va_loss < best_val_loss:
             best_val_loss = va_loss
