@@ -1,0 +1,16 @@
+\begin{table}
+\caption{Subgroup Bias Audit Across Category Representation, Document Length, and Gender Proxy}
+\label{tab:bias_audit_dual_branch_net}
+\begin{tabular}{llcl}
+\toprule
+Subgroup Audit Dimension & Test Support & Accuracy / F1 & Disparity Finding \\
+\midrule
+Majority Categories (Top 5) & 18--22 & 0.6265 & Baseline Reference \\
+Minority Categories (Bottom 5) & 2--12 & 0.3577 & Delta-F1: 0.2688 \\
+Length: Short (<669w) & 122 & 0.6230 & Confidence: 0.579 \\
+Length: Medium (669-842w) & 122 & 0.6230 & Confidence: 0.601 \\
+Length: Long (>842w) & 122 & 0.6066 & Confidence: 0.626 \\
+Gender/Title Perturbation & 2 feature-changed (366 total) & 1.0000 consistency & Flip Rate: 0.00 percent \\
+\bottomrule
+\end{tabular}
+\end{table}
