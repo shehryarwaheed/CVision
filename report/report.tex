@@ -1,6 +1,7 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\usepackage{amsmath,amssymb}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -681,7 +682,7 @@ layer uses 0.75 of it.
   inp/.style={box, fill=blue!10},
   lay/.style={box, fill=green!10},
   fus/.style={box, fill=orange!15, minimum width=6cm},
-  out/.style={box, fill=red!10, minimum width=6cm},
+  outputbox/.style={box, fill=red!10, minimum width=6cm},
   arr/.style={-{Stealth}, thick}
 ]
 \node[inp] (tfidf) {TF-IDF text vector\\(5000)};
@@ -690,7 +691,7 @@ layer uses 0.75 of it.
 \node[lay, below=of struct] (l2) {Linear $13 \to 32$\\BatchNorm, ReLU, Dropout 0.10};
 \node[fus] (cat) at ($(l1)!0.5!(l2)-(0,1.9)$) {Concatenate\\$256 + 32 = 288$};
 \node[lay, minimum width=6cm, below=of cat] (h1) {Linear $288 \to 128$\\BatchNorm, ReLU, Dropout 0.15};
-\node[out, below=of h1] (out) {Linear $128 \to 24$ (class logits)\\Weighted cross-entropy loss};
+\node[outputbox, below=of h1] (out) {Linear $128 \to 24$ (class logits)\\Weighted cross-entropy loss};
 \draw[arr] (tfidf) -- (l1);
 \draw[arr] (struct) -- (l2);
 \draw[arr] (l1) -- (cat);
