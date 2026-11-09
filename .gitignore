@@ -40,5 +40,6 @@ models/*
 *.joblib
 *.pkl
 *.npz
+!logs/preds_*.npz
 *.ckpt
 *.safetensors

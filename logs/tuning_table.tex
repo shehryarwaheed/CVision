@@ -1,0 +1,20 @@
+\begin{table}
+\caption{Hyperparameter Exploration Grid and Validation Performance}
+\label{tab:hyperparameter_tuning}
+\begin{tabular}{lccccccr}
+\toprule
+Configuration & Learning Rate & Batch Size & Dropout & Weight Decay & Epochs (Best / Stop) & Val Macro-F1 & Status \\
+\midrule
+Baseline & 1e-03 & 32 & 0.4000 & 1e-04 & 5 / 13 & 0.5968 & Tested \\
+High LR (1e-2) & 1e-02 & 32 & 0.4000 & 1e-04 & 2 / 10 & 0.5534 & Tested \\
+Low LR (1e-4) & 1e-04 & 32 & 0.4000 & 1e-04 & 25 / 25 & 0.5878 & Tested \\
+Small Batch (16) & 1e-03 & 16 & 0.4000 & 1e-04 & 4 / 12 & 0.6186 & Tested \\
+Large Batch (64) & 1e-03 & 64 & 0.4000 & 1e-04 & 8 / 16 & 0.6184 & Tested \\
+Low Dropout (0.2) & 1e-03 & 32 & 0.2000 & 1e-04 & 3 / 11 & 0.6333 & \textbf{Selected} \\
+High Dropout (0.6) & 1e-03 & 32 & 0.6000 & 1e-04 & 8 / 16 & 0.6131 & Tested \\
+No Weight Decay & 1e-03 & 32 & 0.4000 & 0 & 5 / 13 & 0.5907 & Tested \\
+Strong Weight Decay (1e-2) & 1e-03 & 32 & 0.4000 & 1e-02 & 5 / 13 & 0.5896 & Tested \\
+Compact Text (128) & 1e-03 & 32 & 0.4000 & 1e-04 & 6 / 14 & 0.5883 & Tested \\
+\bottomrule
+\end{tabular}
+\end{table}

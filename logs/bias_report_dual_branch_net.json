@@ -1,0 +1,84 @@
+{
+  "model_tag": "dual_branch_net",
+  "class_representation": {
+    "top_5_classes": [
+      "Information-Technology",
+      "Chef",
+      "Consultant",
+      "Designer",
+      "Banking"
+    ],
+    "top_5_support_range": "18--22",
+    "majority_mean_f1": 0.6264589635007057,
+    "bottom_5_classes": [
+      "Finance",
+      "Teacher",
+      "Agriculture",
+      "Bpo",
+      "Automobile"
+    ],
+    "bottom_5_support_range": "2--12",
+    "minority_mean_f1": 0.3576874003189793,
+    "f1_disparity": 0.26877156318172646,
+    "support_f1_correlation": 0.5547239666747539,
+    "correlation_p_value": 0.004903591560798734
+  },
+  "length_terciles": [
+    {
+      "Slice": "Short (<669w)",
+      "Sample Count": 122,
+      "Accuracy": 0.6229508196721312,
+      "Mean Confidence": 0.5790073275566101
+    },
+    {
+      "Slice": "Medium (669-842w)",
+      "Sample Count": 122,
+      "Accuracy": 0.6229508196721312,
+      "Mean Confidence": 0.6012173295021057
+    },
+    {
+      "Slice": "Long (>842w)",
+      "Sample Count": 122,
+      "Accuracy": 0.6065573770491803,
+      "Mean Confidence": 0.6264604926109314
+    }
+  ],
+  "gender_perturbation": {
+    "text_changed": 31,
+    "features_changed": 2,
+    "total_test_resumes": 366,
+    "flips_count": 0,
+    "flip_rate": 0.0,
+    "consistency_rate": 1.0
+  },
+  "quality_score_audit": {
+    "length_correlation_r": NaN,
+    "length_correlation_p": NaN,
+    "category_means": {
+      "Accountant": 91.14,
+      "Advocate": 91.14,
+      "Agriculture": 91.14,
+      "Apparel": 91.14,
+      "Arts": 91.14,
+      "Automobile": 91.14,
+      "Aviation": 91.14,
+      "Banking": 91.14,
+      "Bpo": 91.14,
+      "Business-Development": 91.14,
+      "Chef": 91.14,
+      "Construction": 91.14,
+      "Consultant": 91.14,
+      "Designer": 91.14,
+      "Digital-Media": 91.14,
+      "Engineering": 91.14,
+      "Finance": 91.14,
+      "Fitness": 91.14,
+      "Healthcare": 91.14,
+      "Hr": 91.14,
+      "Information-Technology": 91.14,
+      "Public-Relations": 91.14,
+      "Sales": 91.14,
+      "Teacher": 91.14
+    }
+  }
+}
