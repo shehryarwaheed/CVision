@@ -167,22 +167,57 @@
       const [modelType, setModelType] = useState("dual");
       const [isEvaluating, setIsEvaluating] = useState(false);
       const [showReportModal, setShowReportModal] = useState(false);
+      const [customData, setCustomData] = useState(null);
+      const [uploadedFile, setUploadedFile] = useState(null);
 
-      const activeData = useMemo(() => PRESETS[activePresetKey], [activePresetKey]);
+      const activeData = useMemo(() => customData || PRESETS[activePresetKey], [customData, activePresetKey]);
 
       const handlePresetChange = (key) => {
         setIsEvaluating(true);
+        setCustomData(null);
+        setUploadedFile(null);
         setTimeout(() => {
           setActivePresetKey(key);
           setIsEvaluating(false);
         }, 320);
       };
 
-      const handleRunEval = () => {
+      const handleFileSelect = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadedFile(file);
+        await uploadAndEvaluate(file);
+      };
+
+      const uploadAndEvaluate = async (file) => {
         setIsEvaluating(true);
-        setTimeout(() => {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("model", modelType);
+          const resp = await fetch("/api/analyze", { method: "POST", body: formData });
+          if (resp.ok) {
+            const data = await resp.json();
+            setCustomData(data);
+          } else {
+            console.warn("API response error, falling back to preset");
+          }
+        } catch (err) {
+          console.warn("Live backend unreachable, using preset preview", err);
+        } finally {
           setIsEvaluating(false);
-        }, 600);
+        }
+      };
+
+      const handleRunEval = async () => {
+        if (uploadedFile) {
+          await uploadAndEvaluate(uploadedFile);
+        } else {
+          setIsEvaluating(true);
+          setTimeout(() => {
+            setIsEvaluating(false);
+          }, 600);
+        }
       };
 
       return (
@@ -388,8 +423,19 @@
                   </span>
                 </div>
 
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  id="cvFileInput"
+                  accept=".pdf,.txt"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
                 {/* Dropzone */}
-                <div className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition ${
+                <div
+                  onClick={() => document.getElementById("cvFileInput")?.click()}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition ${
                   isDark
                     ? 'border-cyan-500/30 bg-[#0B3039]/40 hover:bg-[#0B3039]/80 hover:border-cyan-400'
                     : 'border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-blue-500'
