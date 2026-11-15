@@ -1088,9 +1088,9 @@
                           ? 'bg-[#05161A] border-cyan-900/30 text-cyan-200/80' 
                           : 'bg-slate-50 border-slate-200 text-slate-700'
                       }`}>
-{`[PARSED HEADER]: ${activeData.name} | Role: ${activeData.role}
-[SECTIONS DETECTED]: Summary (present), Work Experience (5 roles), Education (B.S.), Skills (14 tokens), Projects (3 items).
-[SAMPLE EXTRACT]: Led architecture and deployment of high-throughput services handling 45k req/sec with 99.98% uptime SLA. Built CI/CD pipelines using Docker and Kubernetes. Reduced compute expenditure by 28% over 14 months.`}
+{activeData.rawText 
+  ? `[DOCUMENT]: ${activeData.fileName} (${activeData.fileSize})\n[PREDICTED CATEGORY]: ${activeData.role} (${activeData.confidence})\n\n--- EXTRACTED RESUME TEXT ---\n${activeData.rawText}`
+  : `[PARSED HEADER]: ${activeData.name} | Role: ${activeData.role}\n[SECTIONS DETECTED]: Summary (present), Work Experience, Education, Skills, Projects.\n[SAMPLE EXTRACT]: Led architecture and deployment of high-throughput services handling 45k req/sec with 99.98% uptime SLA. Built CI/CD pipelines using Docker and Kubernetes.`}
                       </pre>
                     </div>
                   </div>
