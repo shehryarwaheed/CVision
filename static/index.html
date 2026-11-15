@@ -781,11 +781,11 @@
                     <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-gradient-to-r from-teal-400 to-cyan-300' : 'bg-blue-600'}`}
-                        style={{ width: `${(activeData.skillsFound / activeData.totalSkills) * 100}%` }}
+                        style={{ width: `${activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}%` }}
                       ></div>
                     </div>
                     <span className={`text-[10px] font-mono block mt-1 text-right ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
-                      {Math.round((activeData.skillsFound / activeData.totalSkills) * 100)}% match
+                      {activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}% match
                     </span>
                   </div>
                 </div>
