@@ -247,6 +247,18 @@
         }
       };
 
+      const handleExportJSON = () => {
+        const jsonStr = JSON.stringify(activeData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const safeRole = (activeData.role || "Report").replace(/[^a-zA-Z0-9]/g, "_");
+        a.download = `CVision_Diagnostic_${safeRole}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
       return (
         <div className={`min-h-screen font-sans transition-colors duration-200 ${isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-sky-100 text-slate-800'}`}>
           {/* Header */}
@@ -1109,7 +1121,10 @@
                   <span>Evaluated against IEEE/ACM Software & Domain Taxonomy</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className={`font-mono font-medium hover:underline ${isDark ? 'text-cyan-300' : 'text-blue-900'}`}>
+                  <button
+                    onClick={handleExportJSON}
+                    className={`font-mono font-medium hover:underline ${isDark ? 'text-cyan-300' : 'text-blue-900'}`}
+                  >
                     Export JSON Diagnostic
                   </button>
                   <button className={`px-3 py-1 rounded-lg font-bold text-xs ${
