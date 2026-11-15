@@ -6,8 +6,9 @@ Upload a CV as a PDF and get an overall quality score with a transparent breakdo
 skill-gap chart showing in-demand skills the CV is missing.
 
 > Course project: AI Project, Track A (Application Development)
-> Deliverable 1, Problem Definition and Data Foundations, covers Phase 1 and Phase 2
-> Deliverable 2: Model Architecture and Empirical Evaluation (Phase 3 and Phase 4)
+> Deliverable 1: Problem Definition and Data Foundations (Phase 1 & Phase 2)
+> Deliverable 2: Model Architecture and Empirical Evaluation (Phase 3 & Phase 4)
+> Deliverable 3: Final Deployment and Technical Report (Phase 5 & Phase 6)
 
 **Authors:** Aqsa Ehtesham (24L-3017) and M. Shehryar Waheed (24L-3023)
 
@@ -29,6 +30,9 @@ CVision/
 ├── README.md
 ├── .gitignore
 ├── requirements.txt
+├── app.py                  # Deliverable 3: zero-dependency full-stack server (http.server)
+├── static/                 # Deliverable 3: React 18 single-page application
+│   └── index.html          # dashboard UI with Tailwind, drag-and-drop, presets
 ├── data_scripts/           # all Phase 2 code
 │   ├── config.py           # paths, thresholds, vocabularies
 │   ├── utils.py            # text cleaning helpers
@@ -39,9 +43,18 @@ CVision/
 │   └── run_all.py          # runs steps 1-4
 ├── tests/make_demo_data.py # tiny SYNTHETIC data, for testing the pipeline only
 ├── data/                   # raw + processed data (git-ignored, see below)
-├── figures/                # EDA charts used in the report
-├── logs/                   # machine-generated evidence (collection log, cleaning report, ...)
-├── src/                    # Phase 3 and 4 code (dataset, models, training, tuning, evaluation, bias check)
+├── figures/                # EDA charts & UI dashboard screenshot used in the report
+├── logs/                   # machine-generated evidence (collection log, cleaning report, LaTeX tables)
+├── src/                    # Phase 3, 4 and 5 code
+│   ├── dataset.py          # stratified split & PyTorch Dataset
+│   ├── deep_model.py       # CVisionDualBranchNet (1,321,624 parameters)
+│   ├── baseline_models.py  # Dummy, Logistic Regression, Random Forest
+│   ├── train.py            # AdamW training loop with weighted loss
+│   ├── tune.py             # 10-configuration hyperparameter sweep
+│   ├── evaluate.py         # 5-model comparative benchmark & ROC curves
+│   ├── bias_check.py       # subgroup bias audit
+│   ├── quality_score.py    # 4-factor 0-100 heuristic scoring engine
+│   └── inference.py        # real-time PDF extraction & LinkedIn skill gap engine
 ├── models/                 # trained weights (download link below, not in Git)
 └── report/                 # LaTeX source and compiled PDF
 ```
@@ -70,7 +83,24 @@ pip install -r requirements.txt
 
 Activate the virtual environment first if you use one: `.venv\Scripts\activate` on Windows, `source .venv/bin/activate` on macOS/Linux.
 
-**2. Get the data (either option)**
+**2. Launch the Web Application (Deliverable 3 Quickstart)**
+
+The full-stack web application runs with zero external web dependencies:
+
+```bash
+python app.py
+```
+This automatically opens your default browser at `http://localhost:8000`. You can:
+- **Upload / Drag & Drop:** Drop any multi-page PDF resume or browse local files.
+- **Paste Raw Text:** Toggle the expandable text area to paste and evaluate unformatted resume text.
+- **Real-Time 0–100 Quality Score:** View circular meters for overall quality plus 4 orthogonal sub-scores (Quantified Impact 30%, Section Completeness 30%, Action Verb Density 20%, Lexical Diversity 20%).
+- **Top-3 Occupational Matching:** Inspect predicted job categories with calibrated softmax confidence levels.
+- **Market Skill-Gap Matrix:** Compare candidate skills against LinkedIn job market demand with matched and missing badges.
+- **Parsed Text Preview (Tab 4):** Review verbatim extracted PDF text to verify ATS multi-column parsing integrity.
+- **Instant Viva Presets:** Click any of the three pre-computed demo profiles (*Senior Full-Stack Engineer*, *Financial Analyst*, *HR Coordinator*) for immediate viva demonstration.
+- **Export Diagnostic JSON:** Download a full offline evaluation report (`CVision_Diagnostic_<Role>.json`).
+
+**3. Get the data (for retraining or reproducing Phase 2–4)**
 
 - *Manual:* download both datasets from the Kaggle links above and put `Resume.csv` and `postings.csv`
   anywhere inside `data/raw/`.
@@ -162,19 +192,20 @@ The LaTeX source is `report/report.tex`; the compiled PDF is `report/report.pdf`
 
 ## Team contributions
 
-| Member | Modules | Description |
+| Member | Deliverables & Modules | Description |
 |---|---|---|
-| Aqsa Ehtesham (24L-3017) | `src/dataset.py`, `src/baseline_models.py`, `src/evaluate.py`, Phase 1 and 2 foundations | Data loading and stratified 70/15/15 split, baseline models (Dummy, Logistic Regression, Random Forest), evaluation metrics, ROC curves and confusion matrix |
-| M. Shehryar Waheed (24L-3023) | `src/deep_model.py`, `src/train.py`, `src/tune.py`, `src/bias_check.py`, `src/quality_score.py` | PyTorch dual-branch network, training loop with AdamW and weighted loss, 10-trial hyperparameter tuning, Phase 4 bias audit |
+| Aqsa Ehtesham (24L-3017) | **D1 & D2:** `src/dataset.py`, `src/baseline_models.py`, `src/evaluate.py`, Phase 1 & 2 foundations<br>**D3:** Fallback inference validation & report verification | Data loading and stratified 70/15/15 split, baseline models (Dummy, Logistic Regression, Random Forest), evaluation metrics, ROC curves and confusion matrix; Deliverable 3 fallback validation and report verification |
+| M. Shehryar Waheed (24L-3023) | **D1 & D2:** `src/deep_model.py`, `src/train.py`, `src/tune.py`, `src/bias_check.py`, `src/quality_score.py`<br>**D3:** `app.py`, `src/inference.py`, `static/index.html` | PyTorch dual-branch network, AdamW training loop, 10-trial hyperparameter sweep, Phase 4 bias audit, full 5-model evaluation; Deliverable 3 full-stack deployment (`app.py`, `src/inference.py` PDF parsing and LinkedIn skill gap engine, React 18 SPA with drag-and-drop, raw text editor, OCR preview, viva presets), Phase 5 & 6 technical report authoring |
 
 Individual contributions are verifiable in the Git commit history (`git log --author`).
 
-## Limitations (to address in later phases)
+## Limitations and Future Work
 
 - Resume text in the CV dataset comes from livecareer.com templates, so it is cleaner than typical real-world CVs,
   and its 24 mostly non-technical occupations under-represent modern technical profiles.
-- The skill list in `config.py` is a baseline vocabulary of 70 skills matched by exact keywords; later phases will
-  extend it from job postings and use embeddings.
-- Salary data is very sparse and a few implausible yearly values remain, so it is only a weak, optional feature.
-- Only a 40,000-posting sample of the job data is used.
-- No PDF parsing yet; that arrives with the web app.
+- Tail classes with very few samples (e.g. BPO with 4 test CVs, Automobile with 2 test CVs) suffer from severe data
+  scarcity despite class-weighted cross-entropy loss.
+- The skill list uses exact keyword matching against the LinkedIn vocabulary; future work will incorporate contextual
+  transformer embeddings (e.g., Sentence-BERT) for deeper semantic matching.
+- Real-world multi-column PDFs with complex graphical tables can introduce formatting noise during text extraction,
+  which the application mitigates by exposing the verbatim extracted text preview in Tab 4.
