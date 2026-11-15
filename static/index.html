@@ -1129,7 +1129,9 @@
                   >
                     Export JSON Diagnostic
                   </button>
-                  <button className={`px-3 py-1 rounded-lg font-bold text-xs ${
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition active:scale-95 ${
                     isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-slate-900 text-white'
                   }`}>
                     View Viva Spec
