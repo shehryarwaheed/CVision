@@ -591,7 +591,7 @@
                     <div>
                       <p className="text-xs font-bold">Dual-Branch Deep Net (PyTorch)</p>
                       <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                        Bi-LSTM Text Embeddings + 13 Heuristic Dense Features
+                        5000-dim TF-IDF Text Branch + 13 Heuristic Structural Features
                       </p>
                     </div>
                   </label>
@@ -1161,7 +1161,7 @@
                 </div>
                 <div className="text-xs space-y-3 leading-relaxed">
                   <p><strong>Deliverable 3:</strong> Explainable AI CV Evaluator (Track A - Application Development).</p>
-                  <p><strong>Model Weights:</strong> Dual-Branch neural network combining Bi-LSTM text embeddings (256-dim) with 13 hand-engineered dense linguistic and structural feature vectors.</p>
+                  <p><strong>Model Weights:</strong> Dual-Branch PyTorch network combining 5,000-dim TF-IDF text representations (256-dim latent) with 13 hand-engineered structural features (32-dim latent) into a 128-dim fusion head (1,321,624 parameters).</p>
                   <p><strong>Scoring Algorithm:</strong> 0–100 composite index based on Quantified Impact (30%), Section Completeness (30%), Action Verb Density (20%), and Lexical Diversity (20%).</p>
                   <p><strong>Themes:</strong> Sky Blue Light Mode (`bg-sky-100` canvas with contrasting slate/navy controls) and #05161A Dark Mode (`bg-[#05161A]` with contrasting cyan/teal surfaces and highlights).</p>
                 </div>
