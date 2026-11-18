@@ -21,9 +21,6 @@
 \setlength{\parindent}{0pt}
 \emergencystretch=3em
 
-% Highlighted placeholder: search for "TODO" and replace before submitting.
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
-
 \title{\textbf{CVision}\\[2pt]
   \large Deliverable 3: Final Deployment and Technical Report\\[2pt]
   \normalsize Track A: Application Development}
@@ -45,9 +42,10 @@ across 24 occupations and 37{,}162 sampled LinkedIn job postings, engineering
 Phase~3 implements a custom PyTorch dual-branch neural network combining text
 and heuristic latent representations (1{,}321{,}624 parameters), optimized
 through a 10-trial hyperparameter study. Phase~4 presents a stratified
-70/15/15 benchmark comparing five classification models (achieving 0.949 AUC-ROC
-and 0.612 Macro-F1), complemented by confusion analysis and a three-tier subgroup
-bias audit. Phase~5 details the production deployment of a full-stack web
+70/15/15 benchmark comparing five classification models (where Random Forest
+leads classification with 0.694 Macro-F1 and the PyTorch Dual-Branch Net achieves
+0.950 AUC-ROC and 0.610 Weighted-F1), complemented by confusion analysis and a
+three-tier subgroup bias audit. Phase~5 details the production deployment of a full-stack web
 application featuring an asynchronous zero-dependency backend, responsive
 React~18 single-page dashboard, real-time multi-page PDF text extraction via
 \texttt{pypdf}, an explainable 0--100 quality scoring engine across four
@@ -1154,22 +1152,24 @@ Across the six project phases, the technical progression yielded several definit
 findings:
 
 \begin{itemize}
-  \item \textbf{Efficacy of Dual-Branch Feature Fusion:} The empirical benchmark
-  established in Phase~4 demonstrated that fusing dense TF-IDF textual
-  representations with engineered structural heuristics produces superior
-  classification performance (0.949 AUC-ROC, 62.3\% Accuracy, 0.612 Macro-F1)
-  compared to the text-only neural baseline (0.589 Macro-F1) and traditional tabular
-  classifiers (0.598 Macro-F1 for tuned Logistic Regression; 0.541 Macro-F1 for Random
-  Forest). Structural signals—such as quantification density and section coverage—act
-  as regularising anchors that assist the neural network in distinguishing
-  substantive work experiences from generic vocational descriptions.
-  \item \textbf{Calibration and Top-$k$ Utility:} While top-1 accuracy hovers at
-  62.3\% due to natural semantic overlap among adjacent professions (e.g., Sales
-  versus Apparel, Finance versus Accounting), the high AUC-ROC indicates that the
-  ground-truth category is consistently assigned a high rank in the model's output
-  distribution. In the final user application, displaying the calibrated top-3
-  predictions transforms a potential classification limitation into an intuitive
-  career-exploration feature for multi-disciplinary job applicants.
+  \item \textbf{Empirical Comparison and the Role of Structural Features:} The
+  benchmark established in Phase~4 demonstrated that text-based representations
+  carry the dominant signal for occupational classification across 24 categories.
+  Random Forest achieved the highest overall test classification performance
+  (0.738 Accuracy, 0.694 Macro-F1, 0.972 AUC-ROC) due to its robustness on sparse
+  n-gram spaces with 1{,}707 training samples, while the PyTorch Dual-Branch Net
+  attained strong probabilistic ranking capability (0.950 AUC-ROC, 61.8\% Accuracy,
+  0.610 Weighted-F1). Crucially, while the 13 engineered structural features (e.g.,
+  metric numbers, action verbs, section flags) provide modest incremental gain for
+  vocational categorisation itself, they form the indispensable foundation for
+  CVision's transparent 0--100 quality evaluation engine.
+  \item \textbf{Calibration and Top-$k$ Utility:} While top-1 accuracy for the neural
+  network hovers at 61.8\% due to natural semantic overlap among adjacent professions
+  (e.g., Sales versus Apparel, Finance versus Accounting), the high AUC-ROC (0.950)
+  indicates that the ground-truth category is consistently assigned a high rank in the
+  model's output distribution. In the final user application, displaying the calibrated
+  top-3 predictions transforms this vocational overlap into an intuitive career-exploration
+  feature for multi-disciplinary job applicants.
   \item \textbf{Explainability Over Black-Box Scoring:} Deploying a transparent,
   rule-grounded quality scoring algorithm alongside the neural classifier proved
   essential for user trust. Pure deep learning embeddings can evaluate stylistic

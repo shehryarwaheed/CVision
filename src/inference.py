@@ -10,6 +10,7 @@ Integrates:
 from io import BytesIO
 from pathlib import Path
 import re
+import sys
 import unicodedata
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -19,8 +20,17 @@ import pandas as pd
 from pypdf import PdfReader
 import torch
 
-from deep_model import CVisionDualBranchNet
-from quality_score import compute_cv_quality_score
+# Ensure local sibling modules are importable regardless of current working directory
+_SRC_DIR = str(Path(__file__).resolve().parent)
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
+
+try:
+    from deep_model import CVisionDualBranchNet
+    from quality_score import compute_cv_quality_score
+except ImportError:
+    from src.deep_model import CVisionDualBranchNet
+    from src.quality_score import compute_cv_quality_score
 
 ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DIR = ROOT / "data" / "processed"
