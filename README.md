@@ -75,7 +75,7 @@ evidence of collection. A random sample of 40,000 job postings (seed 42) is used
 **1. Set up**
 
 ```bash
-git clone https://github.com/<username>/CVision.git
+git clone https://github.com/shehryarwaheed/CVision.git
 cd CVision
 python -m venv .venv
 pip install -r requirements.txt
@@ -104,10 +104,10 @@ This automatically opens your default browser at `http://localhost:8000`. You ca
 
 - *Manual:* download both datasets from the Kaggle links above and put `Resume.csv` and `postings.csv`
   anywhere inside `data/raw/`.
-- *Automatic:* put your `kaggle.json` in `~/.kaggle/` (Windows: `C:\Users\<you>\.kaggle\`) and run
+- *Automatic:* put your `kaggle.json` in `~/.kaggle/` (Windows: `C:\Users\<username>\.kaggle\`) and run
   `python data_scripts/collect.py --download`.
 
-**3. Run the pipeline**
+**4. Run the pipeline**
 
 ```bash
 python data_scripts/run_all.py
