@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CVision: Explainable AI CV Evaluator</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,7 +26,8 @@
             neonTeal: '#0CECDD'
           },
           fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
             mono: ['JetBrains Mono', 'Fira Code', 'monospace']
           }
         }
@@ -31,7 +35,6 @@
     }
   </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
     * {
       transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease;
     }
@@ -52,6 +55,49 @@
       transform: rotate(-90deg);
       transform-origin: 50% 50%;
       transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Stitch Fluid Mesh & Shimmer Animations */
+    @keyframes blobFloat1 {
+      0% { transform: translate(0px, 0px) scale(1); }
+      50% { transform: translate(60px, -45px) scale(1.12); }
+      100% { transform: translate(-30px, 35px) scale(0.95); }
+    }
+    @keyframes blobFloat2 {
+      0% { transform: translate(0px, 0px) scale(1.05); }
+      50% { transform: translate(-70px, 50px) scale(0.92); }
+      100% { transform: translate(40px, -40px) scale(1.15); }
+    }
+    @keyframes blobFloat3 {
+      0% { transform: translate(0px, 0px) scale(0.98); }
+      50% { transform: translate(45px, 60px) scale(1.1); }
+      100% { transform: translate(-50px, -30px) scale(1); }
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    .animate-blob-1 { animation: blobFloat1 18s ease-in-out infinite alternate; }
+    .animate-blob-2 { animation: blobFloat2 22s ease-in-out infinite alternate; }
+    .animate-blob-3 { animation: blobFloat3 16s ease-in-out infinite alternate; }
+    .animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
+
+    /* Custom Backdrop & Specular Light Reflections */
+    .glass-specular {
+      background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.03) 70%, transparent 100%);
+    }
+    .dark .glass-specular {
+      background: radial-gradient(120% 120% at 50% 0%, rgba(34, 211, 238, 0.16) 0%, rgba(45, 212, 191, 0.03) 65%, transparent 100%);
+    }
+
+    /* Ambient noise overlay for organic depth */
+    .noise-bg {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0);
+      background-size: 24px 24px;
+    }
+    .dark .noise-bg {
+      background-image: radial-gradient(rgba(34, 211, 238, 0.07) 1px, transparent 0);
+      background-size: 28px 28px;
     }
   </style>
 </head>
@@ -162,6 +208,7 @@
 
     function App() {
       const [isDark, setIsDark] = useState(true);
+      const [currentView, setCurrentView] = useState("welcome"); // 'welcome' | 'dashboard'
       const [activePresetKey, setActivePresetKey] = useState("senior");
       const [activeTab, setActiveTab] = useState("roles"); // 'roles' | 'breakdown' | 'skills' | 'parsed'
       const [modelType, setModelType] = useState("dual");
@@ -263,6 +310,238 @@
         URL.revokeObjectURL(url);
       };
 
+      // -------------------------------------------------------------
+      // View 1: Welcome / Hero Landing Screen (Google Stitch Design)
+      // -------------------------------------------------------------
+      if (currentView === "welcome") {
+        return (
+          <div className={`min-h-screen relative overflow-hidden flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans transition-colors duration-500 ${
+            isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-gradient-to-br from-sky-50 via-indigo-50/40 to-purple-50/50 text-slate-800'
+          }`}>
+            {/* Ambient Fluid Mesh Gradient Background */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+              {isDark ? (
+                <div className="absolute inset-0 transition-opacity duration-700">
+                  <div className="absolute -top-24 -left-20 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-teal-900/40 via-[#052e37]/50 to-emerald-950/20 filter blur-3xl opacity-80 animate-blob-1"></div>
+                  <div className="absolute top-1/3 -right-28 w-[750px] h-[750px] rounded-full bg-gradient-to-bl from-cyan-900/40 via-blue-950/50 to-indigo-950/30 filter blur-3xl opacity-80 animate-blob-2"></div>
+                  <div className="absolute -bottom-32 left-1/4 w-[650px] h-[650px] rounded-full bg-gradient-to-t from-[#041c22]/70 via-cyan-950/40 to-slate-950/60 filter blur-3xl opacity-90 animate-blob-3"></div>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(6,182,212,0.06),transparent_70%)]"></div>
+                </div>
+              ) : (
+                <div className="absolute inset-0 transition-opacity duration-700">
+                  <div className="absolute -top-32 -left-20 w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-sky-300 via-indigo-300 to-purple-300 filter blur-3xl opacity-80 animate-blob-1"></div>
+                  <div className="absolute top-1/4 -right-24 w-[700px] h-[700px] rounded-full bg-gradient-to-bl from-purple-300 via-pink-300 to-rose-200 filter blur-3xl opacity-75 animate-blob-2"></div>
+                  <div className="absolute -bottom-36 left-1/3 w-[600px] h-[600px] rounded-full bg-gradient-to-t from-teal-200 via-sky-200 to-indigo-200 filter blur-3xl opacity-80 animate-blob-3"></div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-sky-100/40"></div>
+                </div>
+              )}
+              <div className="absolute inset-0 noise-bg opacity-70"></div>
+            </div>
+
+            {/* Top Navigation Bar */}
+            <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3.5 group cursor-pointer" onClick={() => setCurrentView("welcome")}>
+                <div className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border backdrop-blur-xl transition-all duration-300 group-hover:scale-105 ${
+                  isDark 
+                    ? 'bg-cyan-950/50 border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.25)]' 
+                    : 'bg-white/70 border-white/90 shadow-[0_8px_20px_rgba(0,0,0,0.04)]'
+                }`}>
+                  <svg className={`w-5 h-5 ${isDark ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'text-indigo-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>CVision</span>
+                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold border ${
+                      isDark 
+                        ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300' 
+                        : 'bg-indigo-100 border-indigo-200 text-indigo-700'
+                    }`}>v2.4</span>
+                  </div>
+                  <span className={`text-[11px] font-medium tracking-wide -mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Resume Intelligence Engine</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3.5">
+                <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-xl shadow-sm text-xs font-medium ${
+                  isDark 
+                    ? 'bg-slate-900/40 border-cyan-500/20 text-slate-300' 
+                    : 'bg-white/60 border-white/80 text-slate-600'
+                }`}>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>ATS Parser 2.0 Live</span>
+                </div>
+
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={() => setIsDark(!isDark)}
+                  aria-label="Toggle visual theme"
+                  className={`relative group flex items-center justify-center p-2.5 rounded-2xl border backdrop-blur-2xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+                    isDark
+                      ? 'bg-[#071c22]/70 border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:border-cyan-400/60'
+                      : 'bg-white/70 border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:border-indigo-300'
+                  }`}
+                  title={isDark ? "Switch to Sky Pastel Light Mode" : "Switch to Abyss Dark Mode"}
+                >
+                  {isDark ? (
+                    <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-indigo-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </header>
+
+            {/* Center Hero Floating Glass Card */}
+            <main className="relative z-10 w-full max-w-4xl mx-auto my-auto py-8 sm:py-12 flex flex-col items-center">
+              <div className="w-full relative transition-all duration-700">
+                {/* Outer Glow Ring for dark mode luxury */}
+                {isDark && (
+                  <div className="absolute -inset-1 rounded-[36px] bg-gradient-to-r from-cyan-500/20 via-teal-500/20 to-indigo-500/20 blur-xl opacity-80 pointer-events-none"></div>
+                )}
+
+                {/* Glassmorphic Layered Container */}
+                <div className={`relative overflow-hidden rounded-[32px] p-8 sm:p-12 md:p-14 border transition-all duration-500 backdrop-blur-2xl ${
+                  isDark
+                    ? 'bg-[#08252c]/55 border-cyan-500/25 shadow-[0_25px_60px_rgba(0,0,0,0.65),0_0_40px_rgba(6,182,212,0.15),0_1px_0_rgba(34,211,238,0.3)_inset]'
+                    : 'bg-white/65 border-white/80 shadow-[0_20px_50px_rgba(15,23,42,0.1),0_1px_0_rgba(255,255,255,0.9)_inset]'
+                }`}>
+                  <div className="absolute inset-0 glass-specular pointer-events-none"></div>
+
+                  <div className="relative z-10 flex flex-col items-center text-center space-y-7">
+                    {/* Brand Pill / Badge */}
+                    <div className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+                      isDark 
+                        ? 'bg-cyan-950/60 border-cyan-400/30 text-cyan-200' 
+                        : 'bg-white/80 border-white/90 text-slate-800'
+                    }`}>
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-80"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500 shadow-[0_0_8px_#22d3ee]"></span>
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold tracking-wide flex items-center gap-1.5">
+                        <span>⚡ AI-Powered Career Intelligence</span>
+                        <span className="opacity-40">•</span>
+                        <span className={`font-extrabold text-transparent bg-clip-text ${
+                          isDark ? 'bg-gradient-to-r from-cyan-300 to-teal-200' : 'bg-gradient-to-r from-indigo-600 to-cyan-600'
+                        }`}>CVision 2.0</span>
+                      </span>
+                    </div>
+
+                    {/* Typography Hierarchy */}
+                    <div className="space-y-4 max-w-3xl">
+                      {/* Primary Hook Line */}
+                      <h1 className="text-4xl sm:text-5xl md:text-[54px] font-extrabold tracking-tight leading-[1.12]">
+                        <span className={`block ${isDark ? 'text-white' : 'text-slate-900'}`}>Your CV deserves better than</span>
+                        <span className={`block mt-1 text-transparent bg-clip-text ${
+                          isDark
+                            ? 'bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300'
+                            : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600'
+                        } drop-shadow-sm`}>
+                          Ctrl + C, Ctrl + V.
+                        </span>
+                      </h1>
+
+                      {/* Secondary Sub-hook */}
+                      <p className={`font-serif italic text-2xl sm:text-3xl font-medium tracking-tight ${
+                        isDark ? 'text-slate-200' : 'text-slate-700'
+                      }`}>
+                        "Let's turn that <span className={`font-semibold ${isDark ? 'text-cyan-300' : 'text-slate-900'}`}>'hire me'</span> into <span className={`font-semibold ${isDark ? 'text-emerald-300' : 'text-indigo-600'}`}>'you're hired'</span>."
+                      </p>
+
+                      {/* Supporting Caption */}
+                      <p className={`text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed pt-1 ${
+                        isDark ? 'text-slate-300/85' : 'text-slate-600'
+                      }`}>
+                        Instant ATS compatibility audit, 4-pillar structural scoring, and LinkedIn market skill-gap diagnostics in under <span className={`font-semibold ${isDark ? 'text-cyan-300' : 'text-indigo-600'}`}>500ms</span>.
+                      </p>
+                    </div>
+
+                    {/* Feature Pills */}
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                        isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
+                      }`}>
+                        <span>🎯</span>
+                        <span className="font-semibold">0–100 Score</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                        isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
+                      }`}>
+                        <span>🔍</span>
+                        <span className="font-semibold">LinkedIn Skill Gap</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                        isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
+                      }`}>
+                        <span>⚡</span>
+                        <span className="font-semibold">Instant Offline Privacy</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                        isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
+                      }`}>
+                        <span>🛡️</span>
+                        <span className="font-semibold">100% Free & Local</span>
+                      </div>
+                    </div>
+
+                    {/* Primary CTA Continue Button */}
+                    <div className="pt-4 flex flex-col items-center">
+                      <button
+                        onClick={() => setCurrentView("dashboard")}
+                        className={`group relative overflow-hidden px-9 py-4 rounded-full font-bold text-base transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex items-center gap-3 cursor-pointer ${
+                          isDark
+                            ? 'bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 text-[#05161A] shadow-cyan-500/25 hover:shadow-cyan-400/40'
+                            : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-indigo-500/30 hover:shadow-indigo-500/50'
+                        }`}
+                      >
+                        <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 animate-shimmer pointer-events-none"></span>
+                        <span className="relative z-10 flex items-center gap-2.5">
+                          <span>Continue to Evaluator</span>
+                          <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                          </svg>
+                        </span>
+                      </button>
+                      <span className={`text-[11px] font-medium mt-3 tracking-wide ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Click to launch live drag-and-drop audit & preset demos
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </main>
+
+            {/* Welcome Footer */}
+            <footer className={`relative z-10 w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs gap-3 border-t pt-5 ${
+              isDark ? 'border-cyan-900/30 text-slate-400' : 'border-slate-200 text-slate-500'
+            }`}>
+              <div>
+                <span>Developed by: </span>
+                <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>M. Shehryar Waheed</span> &amp; <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Aqsa Ehtesham</span>
+              </div>
+              <div className="flex items-center gap-4 font-medium">
+                <span>Track A: Application Development</span>
+                <span>•</span>
+                <span>Deliverable 3</span>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      // -------------------------------------------------------------
+      // View 2: Evaluator Dashboard Screen
+      // -------------------------------------------------------------
       return (
         <div className={`min-h-screen font-sans transition-colors duration-200 ${isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-sky-100 text-slate-800'}`}>
           {/* Header */}
@@ -274,18 +553,22 @@
             <div className="max-w-[1720px] mx-auto flex items-center justify-between">
               {/* Brand */}
               <div className="flex items-center gap-3.5">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg font-bold text-lg ${
-                  isDark 
-                    ? 'bg-gradient-to-tr from-cyan-500 to-teal-400 text-[#05161A] shadow-cyan-500/20' 
-                    : 'bg-gradient-to-tr from-blue-700 to-sky-500 text-white shadow-blue-500/20'
-                }`}>
+                <button
+                  onClick={() => setCurrentView("welcome")}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg font-bold text-lg transition-transform hover:scale-105 active:scale-95 ${
+                    isDark 
+                      ? 'bg-gradient-to-tr from-cyan-500 to-teal-400 text-[#05161A] shadow-cyan-500/20' 
+                      : 'bg-gradient-to-tr from-blue-700 to-sky-500 text-white shadow-blue-500/20'
+                  }`}
+                  title="Click to return to Welcome Screen"
+                >
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                     <path d="M12 2L14.4 7.2L20 8L16 12.1L17 17.8L12 15L7 17.8L8 12.1L4 8L9.6 7.2L12 2Z" />
                   </svg>
-                </div>
+                </button>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold tracking-tight text-xl">CVision</span>
+                    <span className="font-extrabold tracking-tight text-xl cursor-pointer" onClick={() => setCurrentView("welcome")}>CVision</span>
                     <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold border ${
                       isDark 
                         ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300' 
@@ -302,6 +585,22 @@
 
               {/* Status & Actions */}
               <div className="flex items-center gap-3">
+                {/* Back to Overview CTA */}
+                <button
+                  onClick={() => setCurrentView("welcome")}
+                  title="Return to Welcome Screen"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-sm transition active:scale-95 ${
+                    isDark
+                      ? 'bg-[#08252C] hover:bg-[#0B3039] border-cyan-800/40 text-cyan-300'
+                      : 'bg-white hover:bg-sky-50 border-sky-200 text-slate-700'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                  </svg>
+                  <span>Overview</span>
+                </button>
+
                 {/* Engine Status */}
                 <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium ${
                   isDark 
