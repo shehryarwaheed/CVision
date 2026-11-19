@@ -11,6 +11,9 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    document.documentElement.classList.add('cv-motion-ready');
+  </script>
 
   <script>
     tailwind.config = {
@@ -35,7 +38,66 @@
     }
   </script>
   <style>
-    * {
+    :root {
+      /* Motion Timing Tokens */
+      --cv-duration-fast: 280ms;
+      --cv-duration-base: 560ms;
+      --cv-duration-slow: 840ms;
+      --cv-duration-ambient: 24s;
+
+      /* Shared Easing Curves */
+      --cv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --cv-ease-spring: cubic-bezier(0.34, 1.25, 0.64, 1);
+      --cv-ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+      /* Spatial Travel Distances */
+      --cv-dist-sm: 12px;
+      --cv-dist-base: 24px;
+      --cv-dist-lg: 36px;
+
+      /* Light Theme Palette Tokens */
+      --cv-bg-base: #f0f9ff;
+      --cv-grad-field-1: radial-gradient(ellipse 75% 65% at 0% 0%, rgba(219, 242, 255, 0.85), transparent 70%);
+      --cv-grad-field-2: radial-gradient(ellipse 65% 55% at 100% 5%, rgba(238, 242, 255, 0.75), transparent 65%);
+      --cv-grad-field-3: radial-gradient(circle at 60% 50%, rgba(245, 243, 255, 0.55), transparent 60%);
+      --cv-grad-field-4: radial-gradient(ellipse 80% 50% at 20% 100%, rgba(204, 251, 241, 0.50), transparent 70%);
+      --cv-grad-linear: linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 249, 255, 0.3) 50%, rgba(224, 242, 254, 0.4) 100%);
+    }
+
+    .dark {
+      /* Dark Theme Palette Tokens */
+      --cv-bg-base: #05161A;
+      --cv-grad-field-1: radial-gradient(ellipse 70% 60% at 5% 5%, rgba(6, 46, 55, 0.70), transparent 70%);
+      --cv-grad-field-2: radial-gradient(ellipse 60% 55% at 95% 10%, rgba(8, 60, 71, 0.55), transparent 65%);
+      --cv-grad-field-3: radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.04), transparent 60%);
+      --cv-grad-field-4: radial-gradient(ellipse 80% 50% at 50% 100%, rgba(4, 28, 34, 0.85), transparent 75%);
+      --cv-grad-linear: linear-gradient(180deg, rgba(5, 22, 26, 0.3) 0%, rgba(8, 37, 44, 0.15) 50%, rgba(5, 22, 26, 0.5) 100%);
+    }
+
+    /* Accessibility: Reduced-Motion Guarantee */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .animate-blob-1,
+      .animate-blob-2,
+      .animate-blob-3,
+      .animate-shimmer,
+      .cv-ambient-blob-1,
+      .cv-ambient-blob-2,
+      .cv-ambient-blob-3,
+      .cv-ambient-drift {
+        animation: none !important;
+        transform: none !important;
+      }
+    }
+
+    *:not(.cv-motion):not(.cv-motion *) {
       transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease;
     }
     ::-webkit-scrollbar {
@@ -81,6 +143,42 @@
     .animate-blob-2 { animation: blobFloat2 22s ease-in-out infinite alternate; }
     .animate-blob-3 { animation: blobFloat3 16s ease-in-out infinite alternate; }
     .animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
+
+    /* Ambient Drift Keyframes (low-amplitude, transform-only) */
+    @keyframes cvDrift1 {
+      0% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(22px, -16px, 0) scale(1.03); }
+      100% { transform: translate3d(-14px, 12px, 0) scale(0.98); }
+    }
+    @keyframes cvDrift2 {
+      0% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(-24px, 20px, 0) scale(0.97); }
+      100% { transform: translate3d(16px, -14px, 0) scale(1.04); }
+    }
+    @keyframes cvDrift3 {
+      0% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(14px, 18px, 0) scale(1.02); }
+      100% { transform: translate3d(-20px, -10px, 0) scale(0.98); }
+    }
+
+    .cv-ambient-blob-1 {
+      animation: cvDrift1 var(--cv-duration-ambient) ease-in-out infinite alternate;
+      will-change: transform;
+    }
+    .cv-ambient-blob-2 {
+      animation: cvDrift2 28s ease-in-out infinite alternate;
+      will-change: transform;
+    }
+    .cv-ambient-blob-3 {
+      animation: cvDrift3 22s ease-in-out infinite alternate;
+      will-change: transform;
+    }
+
+    /* Fine SVG Grain Overlay (3.5% opacity, anti-banding shield) */
+    .cv-grain {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      background-size: 160px 160px;
+    }
     
     @keyframes pageSlideIn {
       from { opacity: 0; transform: translateY(8px) scale(0.995); }
@@ -300,6 +398,118 @@
         }
         return <span key={i}>{part}</span>;
       });
+    }
+
+    // =========================================================================
+    // Scroll Position Tracking Hook (for Scroll Parallax & Scrubbing)
+    // =========================================================================
+    function useScrollPosition() {
+      const [scrollY, setScrollY] = useState(0);
+
+      useEffect(() => {
+        let ticking = false;
+        const onScroll = () => {
+          if (!ticking) {
+            window.requestAnimationFrame(() => {
+              setScrollY(window.pageYOffset || document.documentElement.scrollTop || 0);
+              ticking = false;
+            });
+            ticking = true;
+          }
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+      }, []);
+
+      return scrollY;
+    }
+
+    // =========================================================================
+    // Dual-Layer Ambient Gradient Background Canvas (Increment 2)
+    // =========================================================================
+    function CVBackgroundCanvas({ isDark, scrollY }) {
+      const p1 = Math.round((scrollY || 0) * -0.03);
+      const p2 = Math.round((scrollY || 0) * -0.05);
+      const p3 = Math.round((scrollY || 0) * -0.02);
+
+      return (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 cv-motion" aria-hidden="true">
+          {/* Dark Theme Canvas Layer (Smooth Crossfade) */}
+          <div
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+              isDark ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ backgroundColor: '#05161A' }}
+          >
+            {/* Field 1: Upper-left deep cyan-teal swell */}
+            <div
+              className="absolute -top-32 -left-28 w-[760px] h-[760px] rounded-full filter blur-[100px] opacity-75 cv-ambient-blob-1"
+              style={{
+                background: 'radial-gradient(circle, rgba(6, 50, 60, 0.85) 0%, rgba(5, 30, 36, 0.45) 55%, transparent 70%)',
+                transform: `translate3d(0, ${p1}px, 0)`
+              }}
+            />
+            {/* Field 2: Upper-right deep indigo-cyan bloom */}
+            <div
+              className="absolute top-1/4 -right-36 w-[820px] h-[820px] rounded-full filter blur-[110px] opacity-70 cv-ambient-blob-2"
+              style={{
+                background: 'radial-gradient(circle, rgba(8, 65, 78, 0.70) 0%, rgba(6, 40, 48, 0.35) 55%, transparent 70%)',
+                transform: `translate3d(0, ${p2}px, 0)`
+              }}
+            />
+            {/* Field 3: Bottom ambient anchor */}
+            <div
+              className="absolute -bottom-40 left-1/4 w-[720px] h-[720px] rounded-full filter blur-[100px] opacity-80 cv-ambient-blob-3"
+              style={{
+                background: 'radial-gradient(circle, rgba(4, 28, 34, 0.90) 0%, rgba(5, 22, 26, 0.50) 55%, transparent 75%)',
+                transform: `translate3d(0, ${p3}px, 0)`
+              }}
+            />
+            {/* Corner highlight & linear depth wash */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_85%_12%,rgba(0,240,255,0.045),transparent_65%)]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#05161A]/20 to-[#05161A]/50" />
+          </div>
+
+          {/* Light Theme Canvas Layer (Smooth Crossfade) */}
+          <div
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+              isDark ? 'opacity-0' : 'opacity-100'
+            }`}
+            style={{ backgroundColor: '#f0f9ff' }}
+          >
+            {/* Field 1: Morning sky bloom */}
+            <div
+              className="absolute -top-36 -left-24 w-[740px] h-[740px] rounded-full filter blur-[90px] opacity-85 cv-ambient-blob-1"
+              style={{
+                background: 'radial-gradient(circle, rgba(219, 242, 255, 0.95) 0%, rgba(199, 235, 254, 0.55) 55%, transparent 70%)',
+                transform: `translate3d(0, ${p1}px, 0)`
+              }}
+            />
+            {/* Field 2: Soft lilac mist */}
+            <div
+              className="absolute top-1/4 -right-32 w-[780px] h-[780px] rounded-full filter blur-[100px] opacity-75 cv-ambient-blob-2"
+              style={{
+                background: 'radial-gradient(circle, rgba(238, 242, 255, 0.90) 0%, rgba(243, 232, 255, 0.50) 55%, transparent 70%)',
+                transform: `translate3d(0, ${p2}px, 0)`
+              }}
+            />
+            {/* Field 3: Pale mint/teal grounding */}
+            <div
+              className="absolute -bottom-40 left-1/3 w-[680px] h-[680px] rounded-full filter blur-[95px] opacity-80 cv-ambient-blob-3"
+              style={{
+                background: 'radial-gradient(circle, rgba(204, 251, 241, 0.75) 0%, rgba(224, 242, 254, 0.50) 55%, transparent 75%)',
+                transform: `translate3d(0, ${p3}px, 0)`
+              }}
+            />
+            {/* Center light wash & linear depth */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.6),transparent_65%)]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-transparent to-sky-100/50" />
+          </div>
+
+          {/* 3.5% Fine Grain Noise Layer to prevent color banding */}
+          <div className="absolute inset-0 cv-grain opacity-[0.035] pointer-events-none" />
+        </div>
+      );
     }
 
     // =========================================================================
@@ -1080,6 +1290,7 @@
 
     function App() {
       const [isDark, setIsDark] = useState(true);
+      const scrollY = useScrollPosition();
       const [currentView, setCurrentView] = useState("welcome"); // 'welcome' | 'dashboard'
       const [dashboardTab, setDashboardTab] = useState("scorecard"); // 'input' | 'scorecard' | 'skills' | 'model'
       const [activePresetKey, setActivePresetKey] = useState("senior");
@@ -1256,27 +1467,10 @@
       if (currentView === "welcome") {
         return (
           <div className={`min-h-screen relative overflow-hidden flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans transition-colors duration-500 ${
-            isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-gradient-to-br from-sky-50 via-indigo-50/40 to-purple-50/50 text-slate-800'
+            isDark ? 'dark text-slate-100' : 'text-slate-800'
           }`}>
-            {/* Ambient Fluid Mesh Gradient Background */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-              {isDark ? (
-                <div className="absolute inset-0 transition-opacity duration-700">
-                  <div className="absolute -top-24 -left-20 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-teal-900/40 via-[#052e37]/50 to-emerald-950/20 filter blur-3xl opacity-80 animate-blob-1"></div>
-                  <div className="absolute top-1/3 -right-28 w-[750px] h-[750px] rounded-full bg-gradient-to-bl from-cyan-900/40 via-blue-950/50 to-indigo-950/30 filter blur-3xl opacity-80 animate-blob-2"></div>
-                  <div className="absolute -bottom-32 left-1/4 w-[650px] h-[650px] rounded-full bg-gradient-to-t from-[#041c22]/70 via-cyan-950/40 to-slate-950/60 filter blur-3xl opacity-90 animate-blob-3"></div>
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(6,182,212,0.06),transparent_70%)]"></div>
-                </div>
-              ) : (
-                <div className="absolute inset-0 transition-opacity duration-700">
-                  <div className="absolute -top-32 -left-20 w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-sky-300 via-indigo-300 to-purple-300 filter blur-3xl opacity-80 animate-blob-1"></div>
-                  <div className="absolute top-1/4 -right-24 w-[700px] h-[700px] rounded-full bg-gradient-to-bl from-purple-300 via-pink-300 to-rose-200 filter blur-3xl opacity-75 animate-blob-2"></div>
-                  <div className="absolute -bottom-36 left-1/3 w-[600px] h-[600px] rounded-full bg-gradient-to-t from-teal-200 via-sky-200 to-indigo-200 filter blur-3xl opacity-80 animate-blob-3"></div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-sky-100/40"></div>
-                </div>
-              )}
-              <div className="absolute inset-0 noise-bg opacity-70"></div>
-            </div>
+            {/* Ambient Fluid Mesh Gradient Background & Parallax Canvas */}
+            <CVBackgroundCanvas isDark={isDark} scrollY={scrollY} />
 
             {/* Top Navigation Bar */}
             <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between">
@@ -1487,17 +1681,10 @@
       // -------------------------------------------------------------
       return (
         <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-200 ${
-          isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-gradient-to-br from-sky-50 via-indigo-50/40 to-purple-50/50 text-slate-800'
+          isDark ? 'dark text-slate-100' : 'text-slate-800'
         }`}>
-          {/* Ambient Noise / Mesh */}
-          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
-            {isDark ? (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.08),transparent_60%)]"></div>
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent_60%)]"></div>
-            )}
-            <div className="absolute inset-0 noise-bg opacity-60"></div>
-          </div>
+          {/* Ambient Fluid Mesh Gradient Background & Parallax Canvas */}
+          <CVBackgroundCanvas isDark={isDark} scrollY={scrollY} />
 
           {/* Left Sidebar Rail (Option A: Sleek w-20 Icon Rail with Tooltips) */}
           <aside className={`relative z-40 w-full md:w-20 md:min-h-screen md:sticky md:top-0 flex flex-row md:flex-col justify-between items-center px-3 py-3 md:py-6 border-b md:border-b-0 md:border-r backdrop-blur-2xl transition-all duration-300 ${
