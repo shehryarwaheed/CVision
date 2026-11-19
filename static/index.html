@@ -116,6 +116,15 @@
         animation: none !important;
         transform: none !important;
       }
+      .cv-scroll-drift-left,
+      .cv-scroll-drift-right {
+        transform: none !important;
+        transition: none !important;
+      }
+      .cv-card-stack {
+        transform: none !important;
+        transition: none !important;
+      }
     }
 
     *:not(.cv-motion):not(.cv-motion *) {
@@ -322,6 +331,33 @@
     .animate-page {
       animation: cvTabFadeIn var(--cv-duration-fast) var(--cv-ease-out) forwards;
       will-change: opacity, transform;
+    }
+
+    /* =========================================================================
+       Scroll-Linked Effects & Stack Depth (Increment 5)
+       ========================================================================= */
+
+    /* Dynamic Card Elevation & Recede */
+    .cv-card-stack {
+      transition: transform var(--cv-duration-base) var(--cv-ease-out),
+                  box-shadow var(--cv-duration-base) var(--cv-ease-out);
+      will-change: transform, box-shadow;
+    }
+    .cv-card-stack:hover {
+      transform: translateY(-2px);
+    }
+    .dark .cv-card-stack:hover {
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(34, 211, 238, 0.12);
+    }
+    .cv-card-stack:hover {
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Drifting Chip Rows (Scroll Direction Sync) */
+    .cv-scroll-drift-left,
+    .cv-scroll-drift-right {
+      transition: transform 120ms ease-out;
+      will-change: transform;
     }
 
     /* Custom Backdrop & Specular Light Reflections */
@@ -1526,6 +1562,12 @@
       const activeData = useMemo(() => customData || PRESETS[activePresetKey], [customData, activePresetKey]);
       const animatedScore = useCountUp(activeData?.score || 0, 850);
 
+      const scrollPct = useMemo(() => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return 0;
+        const docHeight = (document.documentElement.scrollHeight || 1) - window.innerHeight;
+        return docHeight > 0 ? Math.min(100, Math.max(0, (scrollY / docHeight) * 100)) : 0;
+      }, [scrollY]);
+
       const handlePresetChange = (key) => {
         setIsEvaluating(true);
         setCustomData(null);
@@ -1690,6 +1732,18 @@
           <div className={`min-h-screen relative overflow-hidden flex flex-col justify-between p-6 sm:p-8 md:p-12 font-sans transition-colors duration-500 ${
             isDark ? 'dark text-slate-100' : 'text-slate-800'
           }`}>
+            {/* Top Viewport Scroll Progress Bar (Increment 5) */}
+            <div
+              className="fixed top-0 left-0 right-0 h-[2.5px] z-50 pointer-events-none cv-motion"
+              style={{ width: `${scrollPct}%`, transition: 'width 90ms linear' }}
+            >
+              <div className={`h-full w-full ${
+                isDark
+                  ? 'bg-gradient-to-r from-cyan-500 via-teal-300 to-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
+                  : 'bg-gradient-to-r from-indigo-600 via-purple-500 to-cyan-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
+              }`} />
+            </div>
+
             {/* Ambient Fluid Mesh Gradient Background & Parallax Canvas */}
             <CVBackgroundCanvas isDark={isDark} scrollY={scrollY} />
 
@@ -1906,6 +1960,18 @@
         <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-200 ${
           isDark ? 'dark text-slate-100' : 'text-slate-800'
         }`}>
+          {/* Top Viewport Scroll Progress Bar (Increment 5) */}
+          <div
+            className="fixed top-0 left-0 right-0 h-[2.5px] z-50 pointer-events-none cv-motion"
+            style={{ width: `${scrollPct}%`, transition: 'width 90ms linear' }}
+          >
+            <div className={`h-full w-full ${
+              isDark
+                ? 'bg-gradient-to-r from-cyan-500 via-teal-300 to-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
+                : 'bg-gradient-to-r from-indigo-600 via-purple-500 to-cyan-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
+            }`} />
+          </div>
+
           {/* Ambient Fluid Mesh Gradient Background & Parallax Canvas */}
           <CVBackgroundCanvas isDark={isDark} scrollY={scrollY} />
 
@@ -2143,6 +2209,49 @@
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Center / Compact Pinned Hero Score Pill (Docks when main score card scrolls past) */}
+                <div className={`hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-full border backdrop-blur-xl transition-all duration-300 ${
+                  scrollY > 220
+                    ? 'opacity-100 translate-y-0 scale-100'
+                    : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'
+                } ${
+                  isDark
+                    ? 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
+                    : 'bg-white/90 border-indigo-200 text-slate-800 shadow-sm'
+                }`}>
+                  <div className="relative w-5 h-5 flex items-center justify-center">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                      <path
+                        className={isDark ? "stroke-cyan-950/80" : "stroke-slate-200"}
+                        strokeWidth="3.5"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path
+                        className={isDark ? "stroke-cyan-400" : "stroke-indigo-600"}
+                        strokeDasharray={`${activeData.score}, 100`}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        fill="none"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-mono font-black tabular-nums">{animatedScore}</span>
+                    <span className="text-[10px] font-semibold opacity-60">Score</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    activeData.score >= 80
+                      ? isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-emerald-100 text-emerald-800'
+                      : activeData.score >= 60
+                        ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'
+                        : isDark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    {activeData.tier}
+                  </span>
                 </div>
 
                 {/* Right: Quick Actions */}
@@ -2524,7 +2633,7 @@
                   {/* Top 4 KPI Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 cv-stagger">
                     {/* 1. Overall Score Radial Gauge */}
-                    <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all cv-reveal-pop ${
+                    <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all cv-reveal-pop cv-card-stack ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div className="flex items-center justify-between">
@@ -2577,7 +2686,7 @@
                     </div>
 
                     {/* 2. Predicted Job Category */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop cv-card-stack ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2605,7 +2714,7 @@
                     </div>
 
                     {/* 3. Skill Coverage */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop cv-card-stack ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2635,7 +2744,7 @@
                     </div>
 
                     {/* 4. Actionable Suggestions */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop cv-card-stack ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2883,7 +2992,10 @@
                             <span className="text-sm">✓</span> Detected in Resume ({activeData.skillsDetected.length})
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2 cv-stagger">
+                        <div
+                          className="flex flex-wrap gap-2 cv-stagger cv-scroll-drift-left"
+                          style={{ transform: `translate3d(${Math.round(Math.min(18, (scrollY || 0) * 0.025))}px, 0, 0)` }}
+                        >
                           {activeData.skillsDetected.map((skill, i) => (
                             <span
                               key={i}
@@ -2908,7 +3020,10 @@
                             <span className="text-sm">+</span> Recommended In-Demand Skills ({activeData.skillsMissing.length})
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2 cv-stagger">
+                        <div
+                          className="flex flex-wrap gap-2 cv-stagger cv-scroll-drift-right"
+                          style={{ transform: `translate3d(${Math.round(Math.max(-18, (scrollY || 0) * -0.025))}px, 0, 0)` }}
+                        >
                           {activeData.skillsMissing.map((skill, i) => (
                             <span
                               key={i}
