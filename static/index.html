@@ -95,6 +95,14 @@
         animation: none !important;
         transform: none !important;
       }
+      .cv-motion-ready .cv-reveal,
+      .cv-motion-ready .cv-reveal-pop,
+      .cv-motion-ready .cv-mask-inner {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        transition: none !important;
+      }
     }
 
     *:not(.cv-motion):not(.cv-motion *) {
@@ -179,6 +187,71 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
       background-size: 160px 160px;
     }
+
+    /* =========================================================================
+       Reveal System: Entrances, Stagger Delays & Title Masks (Increment 3)
+       ========================================================================= */
+
+    /* Line-by-Line Masked Typography Reveal */
+    .cv-mask-line {
+      display: block;
+      overflow: hidden;
+      vertical-align: top;
+    }
+    .cv-motion-ready .cv-mask-inner {
+      display: inline-block;
+      transform: translateY(115%);
+      transition: transform var(--cv-duration-slow) var(--cv-ease-out);
+      will-change: transform;
+    }
+    .cv-in-view .cv-mask-inner,
+    .cv-mask-line.cv-in-view .cv-mask-inner {
+      transform: translateY(0%);
+    }
+
+    /* Rise-and-Fade Standard Card & Section Entrance */
+    .cv-motion-ready .cv-reveal {
+      opacity: 0;
+      transform: translateY(var(--cv-dist-base));
+      filter: blur(4px);
+      transition: opacity var(--cv-duration-base) var(--cv-ease-out),
+                  transform var(--cv-duration-base) var(--cv-ease-out),
+                  filter var(--cv-duration-base) var(--cv-ease-out);
+      will-change: opacity, transform, filter;
+    }
+    .cv-reveal.cv-in-view,
+    .cv-in-view .cv-reveal {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
+    /* Blur-to-Sharp & Spring Scale-in (Key Metric Tiles & Scorecard) */
+    .cv-motion-ready .cv-reveal-pop {
+      opacity: 0;
+      transform: scale(0.95) translateY(var(--cv-dist-sm));
+      filter: blur(6px);
+      transition: opacity var(--cv-duration-base) var(--cv-ease-spring),
+                  transform var(--cv-duration-base) var(--cv-ease-spring),
+                  filter var(--cv-duration-base) var(--cv-ease-out);
+      will-change: opacity, transform, filter;
+    }
+    .cv-reveal-pop.cv-in-view,
+    .cv-in-view .cv-reveal-pop {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      filter: blur(0);
+    }
+
+    /* Staggered Delay Chains */
+    .cv-stagger > *:nth-child(1) { transition-delay: 50ms; }
+    .cv-stagger > *:nth-child(2) { transition-delay: 110ms; }
+    .cv-stagger > *:nth-child(3) { transition-delay: 170ms; }
+    .cv-stagger > *:nth-child(4) { transition-delay: 230ms; }
+    .cv-stagger > *:nth-child(5) { transition-delay: 290ms; }
+    .cv-stagger > *:nth-child(6) { transition-delay: 350ms; }
+    .cv-stagger > *:nth-child(7) { transition-delay: 410ms; }
+    .cv-stagger > *:nth-child(8) { transition-delay: 470ms; }
     
     @keyframes pageSlideIn {
       from { opacity: 0; transform: translateY(8px) scale(0.995); }
@@ -510,6 +583,43 @@
           <div className="absolute inset-0 cv-grain opacity-[0.035] pointer-events-none" />
         </div>
       );
+    }
+
+    // =========================================================================
+    // IntersectionObserver Scroll Reveal Hook (Increment 3)
+    // =========================================================================
+    function useScrollReveal(dependencies = []) {
+      useEffect(() => {
+        const elements = document.querySelectorAll(
+          '.cv-reveal:not(.cv-in-view), .cv-reveal-pop:not(.cv-in-view), .cv-mask-line:not(.cv-in-view)'
+        );
+        if (!elements.length) return;
+
+        if (!('IntersectionObserver' in window)) {
+          elements.forEach(el => el.classList.add('cv-in-view'));
+          return;
+        }
+
+        const observer = new IntersectionObserver(
+          (entries, obs) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('cv-in-view');
+                obs.unobserve(entry.target);
+              }
+            });
+          },
+          {
+            root: null,
+            rootMargin: '0px 0px -40px 0px',
+            threshold: 0.1
+          }
+        );
+
+        elements.forEach(el => observer.observe(el));
+
+        return () => observer.disconnect();
+      }, dependencies);
     }
 
     // =========================================================================
@@ -1294,6 +1404,7 @@
       const [currentView, setCurrentView] = useState("welcome"); // 'welcome' | 'dashboard'
       const [dashboardTab, setDashboardTab] = useState("scorecard"); // 'input' | 'scorecard' | 'skills' | 'model'
       const [activePresetKey, setActivePresetKey] = useState("senior");
+      useScrollReveal([currentView, dashboardTab, activePresetKey]);
       const [modelType, setModelType] = useState("dual");
       const [isEvaluating, setIsEvaluating] = useState(false);
       const [showReportModal, setShowReportModal] = useState(false);
@@ -1553,7 +1664,7 @@
 
                   <div className="relative z-10 flex flex-col items-center text-center space-y-7">
                     {/* Brand Pill / Badge */}
-                    <div className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+                    <div className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md transition-all duration-300 hover:scale-105 cv-reveal ${
                       isDark 
                         ? 'bg-cyan-950/60 border-cyan-400/30 text-cyan-200' 
                         : 'bg-white/80 border-white/90 text-slate-800'
@@ -1573,54 +1684,56 @@
 
                     {/* Typography Hierarchy */}
                     <div className="space-y-4 max-w-3xl">
-                      {/* Primary Hook Line */}
+                      {/* Primary Hook Line with Masked Reveals */}
                       <h1 className="text-4xl sm:text-5xl md:text-[54px] font-extrabold tracking-tight leading-[1.12]">
-                        <span className={`block ${isDark ? 'text-white' : 'text-slate-900'}`}>Your CV deserves better than</span>
-                        <span className={`block mt-1 text-transparent bg-clip-text ${
+                        <span className={`block cv-mask-line ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          <span className="cv-mask-inner">Your CV deserves better than</span>
+                        </span>
+                        <span className={`block mt-1 cv-mask-line text-transparent bg-clip-text ${
                           isDark
                             ? 'bg-gradient-to-r from-cyan-300 via-teal-200 to-emerald-300'
                             : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600'
                         } drop-shadow-sm`}>
-                          Ctrl + C, Ctrl + V.
+                          <span className="cv-mask-inner">Ctrl + C, Ctrl + V.</span>
                         </span>
                       </h1>
 
                       {/* Secondary Sub-hook */}
-                      <p className={`font-serif italic text-2xl sm:text-3xl font-medium tracking-tight ${
+                      <p className={`font-serif italic text-2xl sm:text-3xl font-medium tracking-tight cv-reveal ${
                         isDark ? 'text-slate-200' : 'text-slate-700'
-                      }`}>
+                      }`} style={{ transitionDelay: '160ms' }}>
                         "Let's turn that <span className={`font-semibold ${isDark ? 'text-cyan-300' : 'text-slate-900'}`}>'hire me'</span> into <span className={`font-semibold ${isDark ? 'text-emerald-300' : 'text-indigo-600'}`}>'you're hired'</span>."
                       </p>
 
                       {/* Supporting Caption */}
-                      <p className={`text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed pt-1 ${
+                      <p className={`text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed pt-1 cv-reveal ${
                         isDark ? 'text-slate-300/85' : 'text-slate-600'
-                      }`}>
+                      }`} style={{ transitionDelay: '220ms' }}>
                         Instant ATS compatibility audit, 4-pillar structural scoring, and LinkedIn market skill-gap diagnostics in under <span className={`font-semibold ${isDark ? 'text-cyan-300' : 'text-indigo-600'}`}>500ms</span>.
                       </p>
                     </div>
 
                     {/* Feature Pills */}
-                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2 cv-stagger">
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 cv-reveal ${
                         isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
                       }`}>
                         <span>🎯</span>
                         <span className="font-semibold">0–100 Score</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 cv-reveal ${
                         isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
                       }`}>
                         <span>🔍</span>
                         <span className="font-semibold">LinkedIn Skill Gap</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 cv-reveal ${
                         isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
                       }`}>
                         <span>⚡</span>
                         <span className="font-semibold">Instant Offline Privacy</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 ${
+                      <div className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border backdrop-blur-md transition-transform hover:-translate-y-0.5 cv-reveal ${
                         isDark ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-white/60 border-white/70 text-slate-700'
                       }`}>
                         <span>🛡️</span>
@@ -1629,7 +1742,7 @@
                     </div>
 
                     {/* Primary CTA Continue Button */}
-                    <div className="pt-4 flex flex-col items-center">
+                    <div className="pt-4 flex flex-col items-center cv-reveal" style={{ transitionDelay: '340ms' }}>
                       <button
                         onClick={() => {
                           setCurrentView("dashboard");
@@ -1891,7 +2004,7 @@
             }`}>
               <div className="flex items-center justify-between gap-3">
                 {/* Left: Active View Title & Breadcrumb */}
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 cv-reveal">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-mono font-bold tracking-wider uppercase ${isDark ? 'text-cyan-400' : 'text-indigo-600'}`}>
@@ -2000,7 +2113,7 @@
                   {/* Left (7 cols): Input Zone */}
                   <div className="lg:col-span-7 space-y-5">
                     {/* Upload Card */}
-                    <div className={`p-6 rounded-2xl border ${
+                    <div className={`p-6 rounded-2xl border cv-reveal ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                     }`}>
                       <div className="flex items-center justify-between mb-4">
@@ -2209,7 +2322,7 @@
                   {/* Right (5 cols): Presets & Explainability */}
                   <div className="lg:col-span-5 space-y-5">
                     {/* Presets Card */}
-                    <div className={`p-6 rounded-2xl border transition-all ${
+                    <div className={`p-6 rounded-2xl border transition-all cv-reveal ${
                       isDark 
                         ? 'bg-[#08252C] border-cyan-800/40 shadow-xl shadow-cyan-950/20' 
                         : 'bg-white border-sky-200 shadow-md'
@@ -2299,9 +2412,9 @@
               {dashboardTab === "scorecard" && (
                 <div className="animate-page space-y-6">
                   {/* Top 4 KPI Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 cv-stagger">
                     {/* 1. Overall Score Radial Gauge */}
-                    <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all ${
+                    <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all cv-reveal-pop ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div className="flex items-center justify-between">
@@ -2354,7 +2467,7 @@
                     </div>
 
                     {/* 2. Predicted Job Category */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2382,7 +2495,7 @@
                     </div>
 
                     {/* 3. Skill Coverage */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2412,7 +2525,7 @@
                     </div>
 
                     {/* 4. Actionable Suggestions */}
-                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between cv-reveal-pop ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
                     }`}>
                       <div>
@@ -2442,7 +2555,7 @@
                   </div>
 
                   {/* 4 Dimension Cards */}
-                  <div className={`p-6 rounded-2xl border ${
+                  <div className={`p-6 rounded-2xl border cv-reveal ${
                     isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                   }`}>
                     <div className="mb-4">
@@ -2452,9 +2565,9 @@
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 cv-stagger">
                       {activeData.breakdown.map((item, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border ${
+                        <div key={idx} className={`p-4 rounded-xl border cv-reveal ${
                           isDark ? 'bg-[#0B3039]/50 border-cyan-900/30' : 'bg-sky-50/60 border-sky-100'
                         }`}>
                           <div className="flex items-center justify-between">
@@ -2478,7 +2591,7 @@
                   </div>
 
                   {/* Diagnostic Feedback */}
-                  <div className={`p-6 rounded-2xl border space-y-3.5 ${
+                  <div className={`p-6 rounded-2xl border space-y-3.5 cv-reveal ${
                     isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                   }`}>
                     <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Actionable Diagnostic Feedback</h4>
@@ -2520,7 +2633,7 @@
                   </div>
 
                   {/* Entry Point 2: AI Coach Banner Card */}
-                  <div className={`p-5 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all relative overflow-hidden ${
+                  <div className={`p-5 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all relative overflow-hidden cv-reveal ${
                     isDark 
                       ? 'bg-gradient-to-r from-[#08252C] via-[#0B3039] to-[#08252C] border-cyan-500/40 shadow-[0_0_25px_rgba(0,240,255,0.12)]' 
                       : 'bg-gradient-to-r from-sky-50 via-cyan-50 to-sky-50 border-cyan-300 shadow-md'
@@ -2552,7 +2665,7 @@
 
                   {/* Entry Point 3: Experience & Project Bullets List with "✨ Improve" Buttons */}
                   {activeData.bullets && activeData.bullets.length > 0 && (
-                    <div className={`p-6 rounded-2xl border space-y-4 ${
+                    <div className={`p-6 rounded-2xl border space-y-4 cv-reveal ${
                       isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                     }`}>
                       <div className="flex items-center justify-between border-b pb-3 border-cyan-900/30">
@@ -2633,7 +2746,7 @@
               {/* VIEW 3: Skill Gap Matrix */}
               {dashboardTab === "skills" && (
                 <div className="animate-page space-y-6">
-                  <div className={`p-6 rounded-2xl border ${
+                  <div className={`p-6 rounded-2xl border cv-reveal ${
                     isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                   }`}>
                     <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-cyan-900/30">
@@ -2708,7 +2821,7 @@
               {/* VIEW 4: AI Model Lab */}
               {dashboardTab === "model" && (
                 <div className="animate-page space-y-6">
-                  <div className={`p-6 rounded-2xl border ${
+                  <div className={`p-6 rounded-2xl border cv-reveal ${
                     isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
                   }`}>
                     {/* Top-5 Distribution */}
