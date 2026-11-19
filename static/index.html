@@ -103,6 +103,19 @@
         filter: none !important;
         transition: none !important;
       }
+      .cv-bar-fill {
+        transition: none !important;
+        width: var(--cv-bar-pct, 0%) !important;
+      }
+      .cv-motion-ready .cv-chip-glow {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+      .animate-page {
+        animation: none !important;
+        transform: none !important;
+      }
     }
 
     *:not(.cv-motion):not(.cv-motion *) {
@@ -253,12 +266,62 @@
     .cv-stagger > *:nth-child(7) { transition-delay: 410ms; }
     .cv-stagger > *:nth-child(8) { transition-delay: 470ms; }
     
-    @keyframes pageSlideIn {
-      from { opacity: 0; transform: translateY(8px) scale(0.995); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
+    /* =========================================================================
+       Data-Driven Motion: Progress Bars, Skill Chips & Count-Up (Increment 4)
+       ========================================================================= */
+
+    /* Tabular Numeric Digits (Prevents Layout Shifting During Count-Up) */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+
+    /* Spring-Loaded Bar Fill with Gentle Overshoot & Settle */
+    .cv-bar-fill {
+      width: 0%;
+      transition: width var(--cv-duration-slow) var(--cv-ease-spring);
+      will-change: width;
+    }
+    .cv-in-view .cv-bar-fill,
+    .cv-bar-fill.cv-in-view {
+      width: var(--cv-bar-pct, 0%);
+    }
+
+    /* Skill Chip Luminous Entrance & Hover Response */
+    .cv-motion-ready .cv-chip-glow {
+      opacity: 0;
+      transform: scale(0.92) translateY(6px);
+      transition: opacity var(--cv-duration-base) var(--cv-ease-out),
+                  transform var(--cv-duration-base) var(--cv-ease-spring),
+                  box-shadow var(--cv-duration-base) var(--cv-ease-out);
+      will-change: opacity, transform, box-shadow;
+    }
+    .cv-in-view .cv-chip-glow,
+    .cv-chip-glow.cv-in-view {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    .dark .cv-in-view .cv-chip-glow:hover {
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.25);
+    }
+    .cv-in-view .cv-chip-glow:hover {
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Enhanced Tab Crossfade Transition */
+    @keyframes cvTabFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(var(--cv-dist-sm)) scale(0.995);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
     .animate-page {
-      animation: pageSlideIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: cvTabFadeIn var(--cv-duration-fast) var(--cv-ease-out) forwards;
+      will-change: opacity, transform;
     }
 
     /* Custom Backdrop & Specular Light Reflections */
@@ -591,7 +654,7 @@
     function useScrollReveal(dependencies = []) {
       useEffect(() => {
         const elements = document.querySelectorAll(
-          '.cv-reveal:not(.cv-in-view), .cv-reveal-pop:not(.cv-in-view), .cv-mask-line:not(.cv-in-view)'
+          '.cv-reveal:not(.cv-in-view), .cv-reveal-pop:not(.cv-in-view), .cv-mask-line:not(.cv-in-view), .cv-chip-glow:not(.cv-in-view), .cv-bar-fill:not(.cv-in-view)'
         );
         if (!elements.length) return;
 
@@ -620,6 +683,52 @@
 
         return () => observer.disconnect();
       }, dependencies);
+    }
+
+    // =========================================================================
+    // Count-Up Animation Hook with Tabular Num Stabilization (Increment 4)
+    // =========================================================================
+    function useCountUp(targetValue, duration = 850) {
+      const [displayValue, setDisplayValue] = useState(targetValue || 0);
+      const prevValueRef = useRef(0);
+
+      useEffect(() => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          setDisplayValue(targetValue);
+          prevValueRef.current = targetValue;
+          return;
+        }
+
+        const startValue = prevValueRef.current;
+        const diff = targetValue - startValue;
+        if (diff === 0 && displayValue === targetValue) return;
+
+        let startTimestamp = null;
+        let frameId = null;
+
+        const step = (timestamp) => {
+          if (!startTimestamp) startTimestamp = timestamp;
+          const elapsed = timestamp - startTimestamp;
+          const progress = Math.min(elapsed / duration, 1);
+          // Ease-out cubic curve
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(startValue + diff * eased);
+          setDisplayValue(current);
+
+          if (progress < 1) {
+            frameId = window.requestAnimationFrame(step);
+          } else {
+            prevValueRef.current = targetValue;
+          }
+        };
+
+        frameId = window.requestAnimationFrame(step);
+        return () => {
+          if (frameId) window.cancelAnimationFrame(frameId);
+        };
+      }, [targetValue, duration]);
+
+      return displayValue;
     }
 
     // =========================================================================
@@ -1415,6 +1524,7 @@
       const [pastedText, setPastedText] = useState("");
 
       const activeData = useMemo(() => customData || PRESETS[activePresetKey], [customData, activePresetKey]);
+      const animatedScore = useCountUp(activeData?.score || 0, 850);
 
       const handlePresetChange = (key) => {
         setIsEvaluating(true);
@@ -2441,14 +2551,14 @@
                                   ? 'stroke-cyan-400' 
                                   : activeData.score >= 80 ? 'stroke-blue-600' : activeData.score >= 60 ? 'stroke-amber-500' : 'stroke-rose-500'
                               }`}
-                              style={{ '--score-val': activeData.score }}
+                              style={{ '--score-val': animatedScore }}
                               strokeWidth="8"
                               strokeLinecap="round"
                               fill="transparent"
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-2xl font-black font-mono tracking-tight">{activeData.score}</span>
+                            <span className="text-2xl font-black font-mono tracking-tight tabular-nums">{animatedScore}</span>
                             <span className={`text-[10px] font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/100</span>
                           </div>
                         </div>
@@ -2504,7 +2614,7 @@
                           <span className="text-teal-400 text-base">🎯</span>
                         </div>
                         <div className="mt-3 flex items-baseline gap-2">
-                          <span className="text-2xl font-black font-mono">{activeData.skillsFound}</span>
+                          <span className="text-2xl font-black font-mono tabular-nums">{activeData.skillsFound}</span>
                           <span className={`text-xs font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/ {activeData.totalSkills}</span>
                         </div>
                         <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
@@ -2514,8 +2624,8 @@
                       <div className="mt-4">
                         <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-gradient-to-r from-teal-400 to-cyan-300' : 'bg-blue-600'}`}
-                            style={{ width: `${activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}%` }}
+                            className={`h-full rounded-full cv-bar-fill transition-colors duration-500 ${isDark ? 'bg-gradient-to-r from-teal-400 to-cyan-300' : 'bg-blue-600'}`}
+                            style={{ '--cv-bar-pct': `${activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}%` }}
                           ></div>
                         </div>
                         <span className={`text-[10px] font-mono block mt-1 text-right ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
@@ -2534,7 +2644,7 @@
                           <span className="text-amber-400 text-base">⚠️</span>
                         </div>
                         <div className="mt-3 flex items-baseline gap-2">
-                          <span className="text-2xl font-black font-mono text-amber-500 dark:text-amber-400">{activeData.tipsCount}</span>
+                          <span className="text-2xl font-black font-mono text-amber-500 dark:text-amber-400 tabular-nums">{activeData.tipsCount}</span>
                           <span className="text-xs font-medium">Tips</span>
                         </div>
                         <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
@@ -2572,14 +2682,14 @@
                         }`}>
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold">{item.title}</span>
-                            <span className="text-xs font-mono font-bold">
+                            <span className="text-xs font-mono font-bold tabular-nums">
                               {item.score} <span className={isDark ? 'text-cyan-300/50' : 'text-slate-400'}>/ {item.max} pts</span>
                             </span>
                           </div>
                           <div className={`w-full h-2 rounded-full overflow-hidden mt-3 ${isDark ? 'bg-[#05161A]' : 'bg-sky-200/60'}`}>
                             <div
-                              className={`h-full rounded-full ${isDark ? 'bg-cyan-400' : 'bg-blue-600'}`}
-                              style={{ width: `${(item.score / item.max) * 100}%` }}
+                              className={`h-full rounded-full cv-bar-fill ${isDark ? 'bg-cyan-400' : 'bg-blue-600'}`}
+                              style={{ '--cv-bar-pct': `${(item.score / item.max) * 100}%` }}
                             ></div>
                           </div>
                           <p className={`text-[11px] mt-2 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
@@ -2773,11 +2883,11 @@
                             <span className="text-sm">✓</span> Detected in Resume ({activeData.skillsDetected.length})
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 cv-stagger">
                           {activeData.skillsDetected.map((skill, i) => (
                             <span
                               key={i}
-                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold ${
+                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold cv-chip-glow ${
                                 isDark
                                   ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
                                   : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -2798,11 +2908,11 @@
                             <span className="text-sm">+</span> Recommended In-Demand Skills ({activeData.skillsMissing.length})
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 cv-stagger">
                           {activeData.skillsMissing.map((skill, i) => (
                             <span
                               key={i}
-                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold ${
+                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold cv-chip-glow ${
                                 isDark
                                   ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
                                   : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -2841,9 +2951,9 @@
                       </div>
 
                       {/* Bars */}
-                      <div className="space-y-4">
+                      <div className="space-y-4 cv-stagger">
                         {activeData.topRoles.map((role, idx) => (
-                          <div key={idx} className="space-y-1.5">
+                          <div key={idx} className="space-y-1.5 cv-reveal">
                             <div className="flex items-center justify-between text-xs font-mono">
                               <div className="flex items-center gap-2">
                                 <span className={isDark ? 'text-cyan-400 font-bold' : 'text-slate-500'}>{idx + 1}.</span>
@@ -2858,16 +2968,16 @@
                                   </span>
                                 )}
                               </div>
-                              <span className="font-bold">{role.prob}%</span>
+                              <span className="font-bold tabular-nums">{role.prob}%</span>
                             </div>
                             <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
                               <div
-                                className={`h-full rounded-full transition-all duration-700 ${
+                                className={`h-full rounded-full cv-bar-fill ${
                                   role.isTop
                                     ? isDark ? 'bg-gradient-to-r from-cyan-400 to-teal-300' : 'bg-blue-600'
                                     : isDark ? 'bg-[#0B3039]' : 'bg-slate-300'
                                 }`}
-                                style={{ width: `${role.prob}%` }}
+                                style={{ '--cv-bar-pct': `${role.prob}%` }}
                               ></div>
                             </div>
                           </div>
