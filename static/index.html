@@ -81,6 +81,14 @@
     .animate-blob-2 { animation: blobFloat2 22s ease-in-out infinite alternate; }
     .animate-blob-3 { animation: blobFloat3 16s ease-in-out infinite alternate; }
     .animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
+    
+    @keyframes pageSlideIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.995); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-page {
+      animation: pageSlideIn 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
 
     /* Custom Backdrop & Specular Light Reflections */
     .glass-specular {
@@ -105,7 +113,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useMemo } = React;
+    const { useState, useMemo, useEffect, useRef, useReducer, useCallback } = React;
 
     const PRESETS = {
       senior: {
@@ -138,7 +146,17 @@
         actionItem: "Upgrade 2 passive verbs ('managed team', 'assisted in') to definitive engineering verbs ('orchestrated', 'spearheaded').",
         skillsDetected: ["Python", "React", "Docker", "SQL", "TypeScript", "REST APIs", "FastAPI", "Kubernetes", "Redis", "Git", "Microservices", "GraphQL", "TailwindCSS", "Node.js"],
         skillsMissing: ["Terraform", "AWS Lambda", "Kafka", "Prometheus"],
-        stats: { words: 742, sentences: 38, numbers: 18, verbs: 31, readability: "Grade 11.2" }
+        stats: { words: 742, sentences: 38, numbers: 18, verbs: 31, readability: "Grade 11.2" },
+        weakBulletsCount: 3,
+        bullets: [
+          { id: "b-1", section: "Experience", text: "Responsible for managing the frontend and backend codebase and fixing Jira tickets.", is_weak: true, why_weak: "Starts with passive duty phrasing ('responsible for') instead of a decisive accomplishment verb.", impact_score_before: 3 },
+          { id: "b-2", section: "Experience", text: "Helped teammates with deployment issues on AWS.", is_weak: true, why_weak: "Too brief (7 words); lacks technical context or deliverable details.", impact_score_before: 4 },
+          { id: "b-3", section: "Experience", text: "Orchestrated migration of 14 monolithic microservices to Kubernetes clusters on AWS, reducing server spend by 22%.", is_weak: false, why_weak: "Strong accomplishment bullet with strong action verb and quantified outcome.", impact_score_before: 10 },
+          { id: "b-4", section: "Experience", text: "Spearheaded engineering of real-time event streaming pipeline processing 1.5 million events per minute.", is_weak: false, why_weak: "Strong accomplishment bullet with strong action verb and quantified outcome.", impact_score_before: 10 },
+          { id: "b-5", section: "Experience", text: "Automated CI/CD deployment pipelines using GitHub Actions, decreasing build failures by 40%.", is_weak: false, why_weak: "Strong accomplishment bullet with strong action verb and quantified outcome.", impact_score_before: 9 },
+          { id: "b-6", section: "Projects", text: "Worked on open source resume parser using Python.", is_weak: true, why_weak: "Contains no measurable metric, scale, or business outcome.", impact_score_before: 3 }
+        ],
+        rawText: `Alex Rivera - Senior Software Engineer\nalex.rivera@example.com | San Francisco, CA\n\nProfessional Experience:\nStaff Software Engineer | Acme Cloud Solutions\n• Responsible for managing the frontend and backend codebase and fixing Jira tickets.\n• Helped teammates with deployment issues on AWS.\n• Orchestrated migration of 14 monolithic microservices to Kubernetes clusters on AWS, reducing server spend by 22%.\n• Spearheaded engineering of real-time event streaming pipeline processing 1.5 million events per minute.\n• Automated CI/CD deployment pipelines using GitHub Actions, decreasing build failures by 40%.\n\nProjects:\n• Worked on open source resume parser using Python.`
       },
       finance: {
         name: "Financial Analyst",
@@ -170,7 +188,15 @@
         actionItem: "Replace passive reporting descriptions with portfolio outcome statements.",
         skillsDetected: ["Financial Modeling", "DCF", "Excel VBA", "Budgeting", "Variance Analysis", "Bloomberg Terminal", "Accounting", "PowerPoint", "Forecasting", "Audit Prep", "P&L Analysis"],
         skillsMissing: ["SQL Data Pulls", "Tableau / PowerBI", "Python for Finance", "Capital Markets Risk", "ERP SAP"],
-        stats: { words: 580, sentences: 31, numbers: 24, verbs: 19, readability: "Grade 12.0" }
+        stats: { words: 580, sentences: 31, numbers: 24, verbs: 19, readability: "Grade 12.0" },
+        weakBulletsCount: 3,
+        bullets: [
+          { id: "b-1", section: "Experience", text: "Responsible for preparing weekly financial reports and updating Excel sheets.", is_weak: true, why_weak: "Starts with passive duty phrasing ('responsible for') and contains no business outcome metrics.", impact_score_before: 3 },
+          { id: "b-2", section: "Experience", text: "Assisted senior analysts with DCF modeling of acquisition targets.", is_weak: true, why_weak: "Starts with passive phrasing ('assisted') and lacks quantified scale.", impact_score_before: 4 },
+          { id: "b-3", section: "Experience", text: "Conducted variance analysis on $45M operational budget, identifying $1.8M in cost redundancies.", is_weak: false, why_weak: "Strong accomplishment bullet with strong action verb and quantified outcome.", impact_score_before: 10 },
+          { id: "b-4", section: "Experience", text: "Handled quarterly audit documentation and compliance tracking.", is_weak: true, why_weak: "Passive verb start ('handled') with no quantifiable metrics.", impact_score_before: 3 }
+        ],
+        rawText: `Morgan Chen - Financial Analyst\n\nExperience:\n• Responsible for preparing weekly financial reports and updating Excel sheets.\n• Assisted senior analysts with DCF modeling of acquisition targets.\n• Conducted variance analysis on $45M operational budget, identifying $1.8M in cost redundancies.\n• Handled quarterly audit documentation and compliance tracking.`
       },
       hr: {
         name: "HR Coordinator",
@@ -202,15 +228,861 @@
         actionItem: "Rewrite 'Responsible for organizing onboarding' to 'Orchestrated seamless 3-day onboarding program for 85+ hires'.",
         skillsDetected: ["Workday", "Onboarding", "Benefits Admin", "Interview Scheduling", "HRIS", "Compliance", "Employee Relations"],
         skillsMissing: ["Talent Analytics", "Greenhouse / Lever", "Compensation Benchmarking", "Employer Branding", "DEI Metrics", "Performance Management", "Excel Advanced", "Labor Law Compliance"],
-        stats: { words: 410, sentences: 24, numbers: 4, verbs: 12, readability: "Grade 9.8" }
+        stats: { words: 410, sentences: 24, numbers: 4, verbs: 12, readability: "Grade 9.8" },
+        weakBulletsCount: 4,
+        bullets: [
+          { id: "b-1", section: "Experience", text: "Responsible for organizing onboarding sessions for new employees.", is_weak: true, why_weak: "Starts with passive duty phrasing ('responsible for').", impact_score_before: 3 },
+          { id: "b-2", section: "Experience", text: "Helped with screening resumes on Workday.", is_weak: true, why_weak: "Too brief and lacks measurable hiring throughput.", impact_score_before: 3 },
+          { id: "b-3", section: "Experience", text: "Handled employee benefits questions and paperwork.", is_weak: true, why_weak: "Starts with passive phrasing ('handled') without performance metrics.", impact_score_before: 2 },
+          { id: "b-4", section: "Experience", text: "Coordinated interview schedules for hiring managers.", is_weak: true, why_weak: "No metric on volume or reduction in time-to-hire.", impact_score_before: 4 }
+        ],
+        rawText: `Taylor Smith - HR Coordinator\n\nExperience:\n• Responsible for organizing onboarding sessions for new employees.\n• Helped with screening resumes on Workday.\n• Handled employee benefits questions and paperwork.\n• Coordinated interview schedules for hiring managers.`
       }
     };
+
+    // =========================================================================
+    // AI Bullet Rewriter / CV Coach: API Service & Helpers
+    // =========================================================================
+    const apiService = {
+      rewriteBullet: async ({ bullet, role, jd_keywords, tone }) => {
+        try {
+          const resp = await fetch("/api/rewrite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bullet, role, jd_keywords, tone })
+          });
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          return await resp.json();
+        } catch (err) {
+          console.warn("apiService.rewriteBullet fallback:", err);
+          const cleanClause = bullet.replace(/^(responsible for|worked on|helped|assisted|handled|duties included)\s*/i, '');
+          return {
+            why_weak: "Starts with passive duty phrasing and contains no measurable outcome metrics.",
+            impact_score_before: 3,
+            rewrites: [
+              { style: "Quantified Impact", text: `Streamlined ${cleanClause}, driving [X%] improvement in operational velocity.`, impact_score: 9 },
+              { style: "Technical Architecture", text: `Architected robust workflows for ${cleanClause}, cutting system latency by [X%].`, impact_score: 9 },
+              { style: "Concise Executive", text: `Delivered high-performance solutions for ${cleanClause}, eliminating [N] critical defects.`, impact_score: 8 }
+            ]
+          };
+        }
+      },
+      rewriteAllBullets: async ({ bullets, role, jd_keywords, tone }) => {
+        try {
+          const resp = await fetch("/api/rewrite-all", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bullets, role, jd_keywords, tone })
+          });
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          return await resp.json();
+        } catch (err) {
+          console.warn("apiService.rewriteAllBullets error:", err);
+          return { results: bullets.map(b => ({ ...b, rewrites: [] })) };
+        }
+      }
+    };
+
+    function renderHighlightedMetrics(text) {
+      if (!text) return null;
+      const parts = text.split(/(\[[^\]]+\])/g);
+      return parts.map((part, i) => {
+        if (part.startsWith("[") && part.endsWith("]")) {
+          return (
+            <span
+              key={i}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm mx-0.5"
+              title="Metric Placeholder: Customize with your authentic metrics"
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      });
+    }
+
+    // =========================================================================
+    // AI Bullet Rewriter / CV Coach: Guided Chat Popup Component
+    // =========================================================================
+    function CVCoachWidget({ isDark, activeData, onAcceptRewrite, externalTrigger }) {
+      const [isOpen, setIsOpen] = useState(false);
+      const [isMinimized, setIsMinimized] = useState(false);
+      const [messages, setMessages] = useState([]);
+      const [isTyping, setIsTyping] = useState(false);
+      const [inputVal, setInputVal] = useState("");
+      const [activeBulletIdx, setActiveBulletIdx] = useState(0);
+      const [copiedId, setCopiedId] = useState(null);
+      const [activeTone, setActiveTone] = useState("impact");
+
+      const chatEndRef = useRef(null);
+      const inputRef = useRef(null);
+
+      const weakBullets = useMemo(() => {
+        if (!activeData || !activeData.bullets) return [];
+        return activeData.bullets.filter(b => b.is_weak);
+      }, [activeData]);
+
+      const weakCount = weakBullets.length;
+
+      // Auto-scroll on new messages
+      useEffect(() => {
+        if (isOpen && !isMinimized) {
+          chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+      }, [messages, isTyping, isOpen, isMinimized]);
+
+      // Handle Escape key to close popup
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === "Escape" && isOpen) {
+            setIsOpen(false);
+          }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, [isOpen]);
+
+      // Respond to external triggers (floating launcher or scorecard cards)
+      useEffect(() => {
+        if (!externalTrigger) return;
+        setIsOpen(true);
+        setIsMinimized(false);
+
+        if (externalTrigger.bulletIndex != null && activeData?.bullets?.[externalTrigger.bulletIndex]) {
+          const targetBullet = activeData.bullets[externalTrigger.bulletIndex];
+          setActiveBulletIdx(externalTrigger.bulletIndex);
+          startBulletFlow(targetBullet, externalTrigger.bulletIndex, true);
+        } else {
+          startInitialGreeting();
+        }
+      }, [externalTrigger]);
+
+      // Helper to push bot message with simulated ~600ms typing indicator
+      const pushBotMessage = useCallback((msg, delay = 600) => {
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages(prev => [...prev, { id: "m-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4), role: "bot", ...msg }]);
+        }, delay);
+      }, []);
+
+      const startInitialGreeting = () => {
+        setMessages([
+          {
+            id: "msg-welcome",
+            role: "bot",
+            type: "text",
+            payload: {
+              text: `👋 Hi! I'm your AI CV Coach. I scanned your CV and found ${weakCount} weak bullets that could hurt your ATS ranking and interview callbacks. Let's upgrade them into high-impact accomplishments!`
+            }
+          },
+          {
+            id: "msg-menu",
+            role: "bot",
+            type: "text",
+            payload: {
+              text: "How would you like to start?",
+              chips: [
+                { label: "✨ Fix one by one", action: "start_one_by_one" },
+                { label: "⚡ Rewrite all weak bullets", action: "start_rewrite_all" },
+                { label: "🎯 Target Role keywords", action: "start_jd" }
+              ]
+            }
+          }
+        ]);
+      };
+
+      const startBulletFlow = (bullet, index, direct = false) => {
+        const total = weakBullets.length || (activeData?.bullets?.length || 1);
+        const weakPos = weakBullets.findIndex(b => b.id === bullet.id || b.text === bullet.text);
+        const displayIdx = weakPos !== -1 ? weakPos + 1 : index + 1;
+
+        const welcomeText = direct
+          ? `Here is the bullet you selected to improve:`
+          : `Let's tackle weak bullet ${displayIdx} of ${total}:`;
+
+        setMessages(prev => [
+          ...prev,
+          {
+            id: "m-bstart-" + Date.now(),
+            role: "bot",
+            type: "text",
+            payload: { text: welcomeText }
+          },
+          {
+            id: "m-bcard-" + Date.now(),
+            role: "bot",
+            type: "bullet_card",
+            payload: {
+              bullet: bullet,
+              index: displayIdx,
+              total: total
+            }
+          },
+          {
+            id: "m-tone-" + Date.now(),
+            role: "bot",
+            type: "tone_chips",
+            payload: {
+              prompt: "Select target rewriting tone:",
+              bullet: bullet
+            }
+          }
+        ]);
+      };
+
+      const handleToneSelect = async (toneKey, bullet) => {
+        setActiveTone(toneKey);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: "m-u-" + Date.now(),
+            role: "user",
+            type: "text",
+            payload: { text: `Target Tone: ${toneKey.toUpperCase()}` }
+          }
+        ]);
+
+        setIsTyping(true);
+        try {
+          const result = await apiService.rewriteBullet({
+            bullet: bullet.text,
+            role: activeData?.role || "Software Developer",
+            jd_keywords: activeData?.skillsDetected || [],
+            tone: toneKey
+          });
+
+          setIsTyping(false);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: "m-rewrites-" + Date.now(),
+              role: "bot",
+              type: "rewrite_options",
+              payload: {
+                original: bullet,
+                rewrites: result.rewrites,
+                why_weak: result.why_weak,
+                impact_score_before: result.impact_score_before,
+                tone: toneKey
+              }
+            }
+          ]);
+        } catch (err) {
+          setIsTyping(false);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: "m-err-" + Date.now(),
+              role: "bot",
+              type: "error",
+              payload: { text: "Unable to rewrite bullet right now. Please retry." }
+            }
+          ]);
+        }
+      };
+
+      const handleUseRewrite = async (rewrittenText, originalBullet) => {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: "m-user-pick-" + Date.now(),
+            role: "user",
+            type: "text",
+            payload: { text: `Use this: "${rewrittenText}"` }
+          }
+        ]);
+
+        setIsTyping(true);
+        const { oldScore, newScore } = await onAcceptRewrite(rewrittenText, originalBullet);
+        setIsTyping(false);
+
+        const remainingWeak = (activeData?.bullets || []).filter(b => b.is_weak && b.id !== originalBullet.id && b.text !== rewrittenText);
+        const nextBullet = remainingWeak[0];
+
+        setMessages(prev => [
+          ...prev,
+          {
+            id: "m-scoreup-" + Date.now(),
+            role: "bot",
+            type: "score_update",
+            payload: {
+              oldScore,
+              newScore,
+              diff: Math.max(1, newScore - oldScore),
+              hasNext: !!nextBullet,
+              nextBullet: nextBullet
+            }
+          }
+        ]);
+      };
+
+      const handleCopy = (text, id) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 1800);
+      };
+
+      const handleChipAction = (action, payload) => {
+        if (action === "start_one_by_one") {
+          const firstWeak = weakBullets[0] || activeData?.bullets?.[0];
+          if (firstWeak) {
+            startBulletFlow(firstWeak, 0);
+          } else {
+            pushBotMessage({
+              type: "text",
+              payload: { text: "🎉 Great job! No weak bullets were found in your CV. All points have strong action verbs and quantified impact!" }
+            });
+          }
+        } else if (action === "start_rewrite_all") {
+          handleRewriteAll();
+        } else if (action === "start_jd") {
+          pushBotMessage({
+            type: "text",
+            payload: {
+              text: `Target role is set to: "${activeData?.role || 'Software Developer'}". We are also factoring in your detected skills: ${(activeData?.skillsDetected || []).slice(0, 5).join(', ')}. Click "Fix one by one" to apply them!`,
+              chips: [{ label: "✨ Start Fixing Bullets", action: "start_one_by_one" }]
+            }
+          });
+        } else if (action === "next_bullet") {
+          if (payload?.nextBullet) {
+            startBulletFlow(payload.nextBullet, 0);
+          } else {
+            const nextWeak = weakBullets[0];
+            if (nextWeak) {
+              startBulletFlow(nextWeak, 0);
+            } else {
+              pushBotMessage({
+                type: "text",
+                payload: { text: "🎉 Excellent! You have strengthened all identified weak bullets in your CV. Your score and callback readiness are maximized!" }
+              });
+            }
+          }
+        } else if (action === "skip_bullet") {
+          pushBotMessage({
+            type: "text",
+            payload: {
+              text: "Skipped bullet. What would you like to do next?",
+              chips: [
+                { label: "➡️ Next Weak Bullet", action: "next_bullet" },
+                { label: "⚡ Rewrite All", action: "start_rewrite_all" }
+              ]
+            }
+          });
+        }
+      };
+
+      const handleRewriteAll = async () => {
+        if (!weakBullets.length) {
+          pushBotMessage({
+            type: "text",
+            payload: { text: "No weak bullets detected to rewrite!" }
+          });
+          return;
+        }
+
+        setMessages(prev => [
+          ...prev,
+          {
+            id: "m-u-batch-" + Date.now(),
+            role: "user",
+            type: "text",
+            payload: { text: "Rewrite all weak bullets concurrently ⚡" }
+          },
+          {
+            id: "m-progress-" + Date.now(),
+            role: "bot",
+            type: "progress",
+            payload: { text: `Concurrently rewriting ${weakBullets.length} weak bullets with high-impact action verbs...` }
+          }
+        ]);
+
+        try {
+          const res = await apiService.rewriteAllBullets({
+            bullets: weakBullets,
+            role: activeData?.role || "Software Developer",
+            jd_keywords: activeData?.skillsDetected || [],
+            tone: activeTone
+          });
+
+          pushBotMessage({
+            type: "text",
+            payload: {
+              text: `⚡ Concurrency complete! Rewrote ${res.results.length} bullets. Let's review the first one:`,
+              chips: [{ label: "Review First Bullet →", action: "start_one_by_one" }]
+            }
+          });
+        } catch (err) {
+          pushBotMessage({
+            type: "error",
+            payload: { text: "Batch rewrite encountered an issue. Try one by one." }
+          });
+        }
+      };
+
+      const handleSendFreeText = async (e) => {
+        e.preventDefault();
+        const text = inputVal.trim();
+        if (!text) return;
+        setInputVal("");
+
+        setMessages(prev => [
+          ...prev,
+          { id: "m-u-" + Date.now(), role: "user", type: "text", payload: { text } }
+        ]);
+
+        const norm = text.toLowerCase();
+        if (norm === "shorter" || norm === "concise") {
+          pushBotMessage({ type: "text", payload: { text: "Switching to Concise mode. Regenerating rewrites with under 18 words..." } });
+          const currentBullet = weakBullets[0] || activeData?.bullets?.[0];
+          if (currentBullet) handleToneSelect("concise", currentBullet);
+          return;
+        }
+        if (norm === "more technical" || norm === "technical") {
+          pushBotMessage({ type: "text", payload: { text: "Switching to Technical mode with deep systems architecture phrasing..." } });
+          const currentBullet = weakBullets[0] || activeData?.bullets?.[0];
+          if (currentBullet) handleToneSelect("technical", currentBullet);
+          return;
+        }
+        if (norm === "leadership") {
+          pushBotMessage({ type: "text", payload: { text: "Switching to Leadership mode highlighting direction and strategic roadmap..." } });
+          const currentBullet = weakBullets[0] || activeData?.bullets?.[0];
+          if (currentBullet) handleToneSelect("leadership", currentBullet);
+          return;
+        }
+
+        if (text.split(" ").length >= 4) {
+          setIsTyping(true);
+          const customBulletObj = { id: "custom-" + Date.now(), text, section: "Custom Input", is_weak: true };
+          try {
+            const res = await apiService.rewriteBullet({
+              bullet: text,
+              role: activeData?.role || "Software Developer",
+              jd_keywords: activeData?.skillsDetected || [],
+              tone: activeTone
+            });
+            setIsTyping(false);
+            setMessages(prev => [
+              ...prev,
+              {
+                id: "m-custom-rewrites-" + Date.now(),
+                role: "bot",
+                type: "rewrite_options",
+                payload: {
+                  original: customBulletObj,
+                  rewrites: res.rewrites,
+                  why_weak: res.why_weak,
+                  impact_score_before: res.impact_score_before,
+                  tone: activeTone
+                }
+              }
+            ]);
+          } catch (err) {
+            setIsTyping(false);
+            pushBotMessage({ type: "error", payload: { text: "Could not rewrite pasted bullet." } });
+          }
+          return;
+        }
+
+        pushBotMessage({
+          type: "text",
+          payload: {
+            text: "I specialize strictly in evaluating and rewriting your CV bullet points for maximum impact! Click a quick-reply chip above or paste any bullet point to get started.",
+            chips: [
+              { label: "✨ Fix one by one", action: "start_one_by_one" },
+              { label: "⚡ Rewrite all", action: "start_rewrite_all" }
+            ]
+          }
+        });
+      };
+
+      const renderLauncher = () => (
+        <button
+          onClick={() => {
+            if (!isOpen) {
+              setIsOpen(true);
+              setIsMinimized(false);
+              if (messages.length === 0) startInitialGreeting();
+            } else {
+              setIsMinimized(!isMinimized);
+            }
+          }}
+          className={`fixed bottom-6 right-6 z-40 group flex items-center gap-2.5 px-4 py-3 rounded-full shadow-2xl transition-all duration-300 transform active:scale-95 ${
+            isDark
+              ? 'bg-gradient-to-r from-cyan-500 to-teal-400 text-[#05161A] shadow-[0_0_25px_rgba(0,240,255,0.4)]'
+              : 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-xl'
+          } hover:brightness-110`}
+          aria-label="Open CV Coach Chat"
+        >
+          <div className="relative flex items-center justify-center">
+            <span className="text-xl">✨</span>
+            {weakCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-extrabold h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center border-2 border-[#05161A] animate-pulse">
+                {weakCount}
+              </span>
+            )}
+          </div>
+          <span className="font-bold text-xs tracking-wide font-sans">
+            CV Coach {weakCount > 0 ? `(${weakCount})` : ''}
+          </span>
+        </button>
+      );
+
+      const renderMessageItem = (msg) => {
+        const isBot = msg.role === "bot";
+
+        return (
+          <div key={msg.id} className={`flex flex-col gap-1.5 ${isBot ? 'items-start' : 'items-end'}`}>
+            <div className={`flex items-end gap-2 max-w-[88%] ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
+              {isBot && (
+                <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 flex items-center justify-center text-xs shrink-0 mb-0.5">
+                  ✨
+                </div>
+              )}
+
+              <div
+                className={`p-3.5 rounded-2xl text-xs leading-relaxed transition-all shadow-md ${
+                  isBot
+                    ? isDark
+                      ? 'bg-[#0E3C47]/90 text-slate-100 border border-cyan-800/40'
+                      : 'bg-white text-slate-800 border border-sky-200'
+                    : isDark
+                      ? 'bg-gradient-to-r from-cyan-500 to-teal-400 text-[#05161A] font-semibold'
+                      : 'bg-blue-600 text-white font-medium'
+                }`}
+              >
+                {msg.type === "text" && (
+                  <p className="whitespace-pre-line">{msg.payload.text}</p>
+                )}
+
+                {msg.type === "bullet_card" && (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 border-b border-cyan-900/40 pb-1.5">
+                      <span className="text-[10px] font-mono uppercase font-bold text-cyan-400">
+                        Weak Bullet {msg.payload.index} of {msg.payload.total}
+                      </span>
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        Score: {msg.payload.bullet?.impact_score_before || 3}/10
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                      <div
+                        className="bg-cyan-400 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${(msg.payload.index / msg.payload.total) * 100}%` }}
+                      />
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/40 text-rose-200 font-sans leading-relaxed">
+                      "{msg.payload.bullet?.text}"
+                    </div>
+
+                    {msg.payload.bullet?.why_weak && (
+                      <p className="text-[11px] text-amber-300 flex items-start gap-1 font-medium">
+                        <span>⚠️</span>
+                        <span>{msg.payload.bullet?.why_weak}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {msg.type === "tone_chips" && (
+                  <div className="space-y-2">
+                    <p className="font-semibold text-cyan-300">{msg.payload.prompt}</p>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      {[
+                        { id: "impact", label: "💥 Impact", desc: "Quantified metric outcomes" },
+                        { id: "technical", label: "⚙️ Technical", desc: "Deep architectural scale" },
+                        { id: "concise", label: "✂️ Concise", desc: "Brevity under 18 words" },
+                        { id: "leadership", label: "👑 Leadership", desc: "Strategy & mentorship" },
+                      ].map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => handleToneSelect(t.id, msg.payload.bullet)}
+                          className={`p-2 rounded-xl text-left border transition-all text-[11px] ${
+                            activeTone === t.id
+                              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold'
+                              : isDark
+                                ? 'bg-slate-900/40 border-cyan-900/40 hover:border-cyan-600 text-slate-300'
+                                : 'bg-slate-50 border-slate-200 hover:border-blue-400 text-slate-700'
+                          }`}
+                        >
+                          <div className="font-bold">{t.label}</div>
+                          <div className="text-[9px] opacity-70 truncate">{t.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {msg.type === "rewrite_options" && (
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold font-mono">
+                      <span>✨ Choose Your High-Impact Rewrite</span>
+                      <span className="text-[10px] text-slate-400">Tone: {msg.payload.tone}</span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {msg.payload.rewrites.map((r, i) => (
+                        <div
+                          key={i}
+                          className={`p-3 rounded-xl border space-y-2 transition-all ${
+                            isDark ? 'bg-[#08252C] border-cyan-800/50 hover:border-cyan-400' : 'bg-sky-50 border-sky-200 hover:border-blue-500'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
+                              {r.style}
+                            </span>
+                            <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+                              Score: {r.impact_score}/10
+                            </span>
+                          </div>
+
+                          <div className="text-xs leading-relaxed text-slate-200">
+                            {renderHighlightedMetrics(r.text)}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-cyan-900/30">
+                            <button
+                              onClick={() => handleCopy(r.text, `r-${msg.id}-${i}`)}
+                              className={`text-[11px] font-medium px-2 py-1 rounded transition-all flex items-center gap-1 ${
+                                copiedId === `r-${msg.id}-${i}`
+                                  ? 'text-emerald-400 font-bold'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <span>{copiedId === `r-${msg.id}-${i}` ? '✅ Copied!' : '📋 Copy'}</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleUseRewrite(r.text, msg.payload.original)}
+                              className="px-3 py-1 rounded-lg text-[11px] font-bold bg-cyan-400 hover:bg-cyan-300 text-[#05161A] active:scale-95 transition-all shadow-sm"
+                            >
+                              ✨ Use this
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-[11px]">
+                      <button
+                        onClick={() => startBulletFlow(msg.payload.original, activeBulletIdx, true)}
+                        className="text-cyan-400 hover:underline flex items-center gap-1"
+                      >
+                        <span>🔄</span> Try another tone
+                      </button>
+                      <button
+                        onClick={() => handleChipAction("skip_bullet")}
+                        className="text-slate-400 hover:text-white flex items-center gap-1"
+                      >
+                        Skip ⏭
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {msg.type === "score_update" && (
+                  <div className="space-y-2.5 p-1">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold font-mono">
+                      <span>🎉</span>
+                      <span>CV Updated &amp; Re-Scored!</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase font-mono tracking-wider text-emerald-300">CV Quality Score</div>
+                        <div className="text-xl font-extrabold flex items-center gap-2 mt-0.5">
+                          <span className="text-slate-400 line-through text-sm">{msg.payload.oldScore}</span>
+                          <span className="text-cyan-400">➔</span>
+                          <span className="text-emerald-400 font-mono text-2xl">{msg.payload.newScore}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            +{msg.payload.diff} pts
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-2xl animate-bounce">🚀</div>
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap gap-1.5">
+                      {msg.payload.hasNext ? (
+                        <button
+                          onClick={() => handleChipAction("next_bullet", msg.payload)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-400 text-[#05161A] hover:bg-cyan-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>➡️</span>
+                          <span>Next Weak Bullet</span>
+                        </button>
+                      ) : (
+                        <div className="text-xs text-emerald-400 font-bold">
+                          🌟 All weak bullets resolved! You are ready to apply!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {msg.type === "progress" && (
+                  <div className="space-y-2">
+                    <p className="font-semibold text-cyan-300">{msg.payload.text}</p>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-gradient-to-r from-cyan-400 to-teal-400 h-full w-3/4 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                )}
+
+                {msg.type === "error" && (
+                  <div className="text-rose-400 space-y-2">
+                    <p>⚠️ {msg.payload.text}</p>
+                    <button
+                      onClick={() => handleChipAction("start_one_by_one")}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30"
+                    >
+                      🔄 Retry
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {isBot && msg.payload?.chips && (
+              <div className="flex flex-wrap gap-1.5 pl-9 pt-1">
+                {msg.payload.chips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleChipAction(chip.action, chip.payload)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-all active:scale-95 shadow-sm ${
+                      isDark
+                        ? 'bg-[#08252C] border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400'
+                        : 'bg-white border-sky-300 text-blue-700 hover:bg-sky-50'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <React.Fragment>
+          {renderLauncher()}
+
+          {ReactDOM.createPortal(
+            <div
+              className={`fixed z-50 transition-all duration-300 ease-out flex flex-col ${
+                isOpen
+                  ? 'opacity-100 scale-100 pointer-events-auto'
+                  : 'opacity-0 scale-95 pointer-events-none'
+              } ${
+                isMinimized
+                  ? 'bottom-6 right-6 w-72 h-14 rounded-2xl overflow-hidden shadow-2xl'
+                  : 'bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-32px)] sm:w-[400px] h-[calc(100vh-80px)] sm:h-[580px] max-h-[600px] rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.7)]'
+              } ${
+                isDark
+                  ? 'bg-[#08252C]/95 border border-cyan-500/30 text-slate-100 backdrop-blur-2xl'
+                  : 'bg-white/95 border border-sky-300 text-slate-800 backdrop-blur-xl'
+              }`}
+              role="dialog"
+              aria-label="CV Coach Chat Popup"
+            >
+              <div className="p-3.5 px-4 border-b border-cyan-900/40 flex items-center justify-between shrink-0 bg-cyan-950/30">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-400 text-[#05161A] flex items-center justify-center font-bold text-sm shadow-md">
+                    ✨
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#08252C]" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs font-mono tracking-wider flex items-center gap-1.5">
+                      <span>CV COACH</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-400/30 font-sans">
+                        AI Rewriter
+                      </span>
+                    </h3>
+                    <p className="text-[10px] text-cyan-200/60 leading-none">
+                      {weakCount > 0 ? `${weakCount} weak bullets detected` : 'All bullets optimized'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsMinimized(!isMinimized)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    title={isMinimized ? "Expand" : "Minimize"}
+                  >
+                    {isMinimized ? "◻" : "—"}
+                  </button>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 hover:text-rose-300 transition-colors"
+                    title="Close (Esc)"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {!isMinimized && (
+                <React.Fragment>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scroll-smooth">
+                    {messages.map(msg => renderMessageItem(msg))}
+
+                    {isTyping && (
+                      <div className="flex items-center gap-2 pl-9">
+                        <div className="flex items-center gap-1 py-1.5 px-3 rounded-2xl bg-cyan-950/40 border border-cyan-800/40">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  <form
+                    onSubmit={handleSendFreeText}
+                    className="p-2.5 px-3 border-t border-cyan-900/40 flex items-center gap-2 bg-cyan-950/20 shrink-0"
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={inputVal}
+                      onChange={(e) => setInputVal(e.target.value)}
+                      placeholder="Paste bullet or type 'shorter', 'technical'..."
+                      className={`flex-1 text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 transition-all ${
+                        isDark
+                          ? 'bg-[#05161A]/80 border-cyan-900/60 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400'
+                          : 'bg-white border-slate-300 text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500'
+                      }`}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!inputVal.trim()}
+                      className="p-2 rounded-xl bg-cyan-400 text-[#05161A] hover:bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold text-xs shrink-0"
+                      title="Send message"
+                    >
+                      ➔
+                    </button>
+                  </form>
+                </React.Fragment>
+              )}
+            </div>,
+            document.body
+          )}
+        </React.Fragment>
+      );
+    }
 
     function App() {
       const [isDark, setIsDark] = useState(true);
       const [currentView, setCurrentView] = useState("welcome"); // 'welcome' | 'dashboard'
+      const [dashboardTab, setDashboardTab] = useState("scorecard"); // 'input' | 'scorecard' | 'skills' | 'model'
       const [activePresetKey, setActivePresetKey] = useState("senior");
-      const [activeTab, setActiveTab] = useState("roles"); // 'roles' | 'breakdown' | 'skills' | 'parsed'
       const [modelType, setModelType] = useState("dual");
       const [isEvaluating, setIsEvaluating] = useState(false);
       const [showReportModal, setShowReportModal] = useState(false);
@@ -231,6 +1103,7 @@
         setTimeout(() => {
           setActivePresetKey(key);
           setIsEvaluating(false);
+          setDashboardTab("scorecard");
         }, 320);
       };
 
@@ -251,6 +1124,7 @@
           if (resp.ok) {
             const data = await resp.json();
             setCustomData(data);
+            setDashboardTab("scorecard");
           } else {
             console.warn("API response error, falling back to preset");
           }
@@ -277,6 +1151,7 @@
           if (resp.ok) {
             const data = await resp.json();
             setCustomData(data);
+            setDashboardTab("scorecard");
           }
         } catch (err) {
           console.warn("Live backend unreachable", err);
@@ -294,6 +1169,7 @@
           setIsEvaluating(true);
           setTimeout(() => {
             setIsEvaluating(false);
+            setDashboardTab("scorecard");
           }, 600);
         }
       };
@@ -308,6 +1184,70 @@
         a.download = `CVision_Diagnostic_${safeRole}.json`;
         a.click();
         URL.revokeObjectURL(url);
+      };
+
+      // -------------------------------------------------------------
+      // AI Coach Triggers & Bullet Acceptance Handlers
+      // -------------------------------------------------------------
+      const [coachTrigger, setCoachTrigger] = useState(null);
+
+      const handleOpenCoach = (bulletIndex = null) => {
+        setCoachTrigger({ bulletIndex, timestamp: Date.now() });
+      };
+
+      const handleAcceptRewrite = async (rewrittenText, originalBullet) => {
+        const oldScore = activeData.score;
+        const currentBullets = [...(activeData.bullets || [])];
+        const targetIdx = currentBullets.findIndex(b => b.id === originalBullet.id || b.text === originalBullet.text);
+
+        if (targetIdx !== -1) {
+          currentBullets[targetIdx] = {
+            ...currentBullets[targetIdx],
+            text: rewrittenText,
+            is_weak: false,
+            why_weak: "Optimized for maximum quantified impact.",
+            impact_score_before: 9
+          };
+        }
+
+        const oldRawText = activeData.rawText || "";
+        const updatedRawText = oldRawText.includes(originalBullet.text)
+          ? oldRawText.replace(originalBullet.text, rewrittenText)
+          : `${oldRawText}\n• ${rewrittenText}`;
+
+        const remainingWeak = currentBullets.filter(b => b.is_weak).length;
+        const newScore = Math.min(100, oldScore + 4);
+
+        const updatedData = {
+          ...activeData,
+          bullets: currentBullets,
+          weakBulletsCount: remainingWeak,
+          score: newScore,
+          rawText: updatedRawText
+        };
+
+        setCustomData(updatedData);
+
+        try {
+          const resp = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: updatedRawText, model: modelType })
+          });
+          if (resp.ok) {
+            const serverData = await resp.json();
+            setCustomData({
+              ...serverData,
+              bullets: currentBullets,
+              weakBulletsCount: remainingWeak
+            });
+            return { oldScore, newScore: serverData.score };
+          }
+        } catch (err) {
+          console.log("Offline re-score fallback applied");
+        }
+
+        return { oldScore, newScore };
       };
 
       // -------------------------------------------------------------
@@ -497,7 +1437,10 @@
                     {/* Primary CTA Continue Button */}
                     <div className="pt-4 flex flex-col items-center">
                       <button
-                        onClick={() => setCurrentView("dashboard")}
+                        onClick={() => {
+                          setCurrentView("dashboard");
+                          setDashboardTab("scorecard");
+                        }}
                         className={`group relative overflow-hidden px-9 py-4 rounded-full font-bold text-base transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex items-center gap-3 cursor-pointer ${
                           isDark
                             ? 'bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 text-[#05161A] shadow-cyan-500/25 hover:shadow-cyan-400/40'
@@ -543,711 +1486,785 @@
       // View 2: Evaluator Dashboard Screen
       // -------------------------------------------------------------
       return (
-        <div className={`min-h-screen font-sans transition-colors duration-200 ${isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-sky-100 text-slate-800'}`}>
-          {/* Header */}
-          <header className={`sticky top-0 z-40 border-b backdrop-blur-md px-6 py-3.5 transition-colors ${
+        <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-200 ${
+          isDark ? 'dark bg-[#05161A] text-slate-100' : 'bg-gradient-to-br from-sky-50 via-indigo-50/40 to-purple-50/50 text-slate-800'
+        }`}>
+          {/* Ambient Noise / Mesh */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
+            {isDark ? (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(6,182,212,0.08),transparent_60%)]"></div>
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent_60%)]"></div>
+            )}
+            <div className="absolute inset-0 noise-bg opacity-60"></div>
+          </div>
+
+          {/* Left Sidebar Rail (Option A: Sleek w-20 Icon Rail with Tooltips) */}
+          <aside className={`relative z-40 w-full md:w-20 md:min-h-screen md:sticky md:top-0 flex flex-row md:flex-col justify-between items-center px-3 py-3 md:py-6 border-b md:border-b-0 md:border-r backdrop-blur-2xl transition-all duration-300 ${
             isDark 
-              ? 'bg-[#05161A]/90 border-cyan-900/40 text-white' 
-              : 'bg-white/95 border-sky-200/80 shadow-sm text-slate-900'
+              ? 'bg-[#061e24]/85 border-cyan-800/40 text-cyan-200 shadow-[4px_0_24px_rgba(5,22,26,0.5)]' 
+              : 'bg-white/90 border-sky-200/80 text-slate-800 shadow-md'
           }`}>
-            <div className="max-w-[1720px] mx-auto flex items-center justify-between">
-              {/* Brand */}
-              <div className="flex items-center gap-3.5">
-                <button
-                  onClick={() => setCurrentView("welcome")}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg font-bold text-lg transition-transform hover:scale-105 active:scale-95 ${
-                    isDark 
-                      ? 'bg-gradient-to-tr from-cyan-500 to-teal-400 text-[#05161A] shadow-cyan-500/20' 
-                      : 'bg-gradient-to-tr from-blue-700 to-sky-500 text-white shadow-blue-500/20'
-                  }`}
-                  title="Click to return to Welcome Screen"
-                >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 2L14.4 7.2L20 8L16 12.1L17 17.8L12 15L7 17.8L8 12.1L4 8L9.6 7.2L12 2Z" />
-                  </svg>
-                </button>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold tracking-tight text-xl cursor-pointer" onClick={() => setCurrentView("welcome")}>CVision</span>
-                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold border ${
-                      isDark 
-                        ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300' 
-                        : 'bg-sky-100 border-sky-300 text-sky-800'
-                    }`}>
-                      v2.4
-                    </span>
-                  </div>
-                  <p className={`text-xs ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                    Deliverable 3 • Track A: Explainable AI CV Evaluator
-                  </p>
-                </div>
-              </div>
-
-              {/* Status & Actions */}
-              <div className="flex items-center gap-3">
-                {/* Back to Overview CTA */}
-                <button
-                  onClick={() => setCurrentView("welcome")}
-                  title="Return to Welcome Screen"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-sm transition active:scale-95 ${
-                    isDark
-                      ? 'bg-[#08252C] hover:bg-[#0B3039] border-cyan-800/40 text-cyan-300'
-                      : 'bg-white hover:bg-sky-50 border-sky-200 text-slate-700'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                  </svg>
-                  <span>Overview</span>
-                </button>
-
-                {/* Engine Status */}
-                <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium ${
-                  isDark 
-                    ? 'bg-[#08252C] border-cyan-500/30 text-cyan-300' 
-                    : 'bg-white border-sky-200 text-slate-700 shadow-sm'
-                }`}>
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span>PyTorch Engine: Online</span>
-                </div>
-
-                {/* Theme Toggle Button */}
-                <button
-                  onClick={() => setIsDark(!isDark)}
-                  title={isDark ? "Switch to Sky Blue Light Mode" : "Switch to #05161A Dark Mode"}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-semibold shadow-sm transition-all active:scale-95 ${
-                    isDark
-                      ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 hover:brightness-110'
-                      : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800'
-                  }`}
-                >
-                  {isDark ? (
-                    <>
-                      <svg className="w-4 h-4 text-[#05161A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="5" strokeWidth="2"/>
-                        <path strokeWidth="2" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                      </svg>
-                      <span>Sky Light Mode</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-                      </svg>
-                      <span>Teal Dark Mode</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Tech Report Modal Trigger */}
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
-                    isDark
-                      ? 'bg-[#08252C] hover:bg-[#0B3039] border-cyan-800/40 text-cyan-200'
-                      : 'bg-white hover:bg-sky-50 border-sky-200 text-slate-700 shadow-sm'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                  <span>Tech Report</span>
-                </button>
-
-                {/* Reset */}
-                <button
-                  onClick={() => handlePresetChange("senior")}
-                  title="Reset to default evaluation state"
-                  className={`p-1.5 rounded-xl border transition ${
-                    isDark
-                      ? 'border-cyan-900/40 text-cyan-400/80 hover:bg-[#08252C] hover:text-cyan-200'
-                      : 'border-sky-200 text-slate-600 hover:bg-sky-50 shadow-sm'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {/* Main Layout */}
-          <main className="max-w-[1720px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left Column: Input, Controls & Presets */}
-            <aside className="lg:col-span-4 xl:col-span-3 space-y-5">
-              
-              {/* Viva Demo Presets (High-Contrast Menu) */}
-              <div className={`p-4 rounded-2xl border transition-all ${
-                isDark 
-                  ? 'bg-[#08252C] border-cyan-800/40 shadow-xl shadow-cyan-950/20' 
-                  : 'bg-white border-sky-200 shadow-md'
-              }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500 font-bold">⚡</span>
-                    <h2 className="text-xs font-bold uppercase tracking-wider font-mono">Viva Demo Presets</h2>
-                  </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
-                    isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' : 'bg-sky-100 text-sky-800 border border-sky-200'
-                  }`}>
-                    Instant Click
-                  </span>
-                </div>
-                
-                {/* Preset List */}
-                <div className="space-y-2">
-                  {[
-                    { key: "senior", icon: "💻", title: "Senior Full-Stack Engineer", subtitle: "Software Developer", score: "86/100" },
-                    { key: "finance", icon: "📊", title: "Financial Analyst", subtitle: "Finance / Banking", score: "68/100" },
-                    { key: "hr", icon: "🤝", title: "HR Coordinator", subtitle: "Human Resources", score: "44/100" }
-                  ].map((p) => {
-                    const isSelected = activePresetKey === p.key;
-                    return (
-                      <button
-                        key={p.key}
-                        onClick={() => handlePresetChange(p.key)}
-                        className={`w-full text-left p-3 rounded-xl border flex items-center justify-between transition-all group ${
-                          isSelected
-                            ? isDark
-                              ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 font-semibold shadow-md shadow-cyan-400/20 scale-[1.01]'
-                              : 'bg-slate-900 text-white border-slate-800 shadow-lg scale-[1.01]'
-                            : isDark
-                              ? 'bg-[#0B3039]/70 hover:bg-[#0E3C47] border-cyan-900/30 text-cyan-100/90'
-                              : 'bg-sky-50/70 hover:bg-sky-100 border-sky-100 text-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-base">{p.icon}</span>
-                          <div className="truncate">
-                            <p className="text-xs font-bold truncate leading-snug">{p.title}</p>
-                            <p className={`text-[11px] truncate ${
-                              isSelected 
-                                ? isDark ? 'text-[#05161A]/80 font-medium' : 'text-sky-200' 
-                                : isDark ? 'text-cyan-300/60' : 'text-slate-500'
-                            }`}>{p.subtitle}</p>
-                          </div>
-                        </div>
-                        <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md shrink-0 ml-2 ${
-                          isSelected
-                            ? isDark 
-                              ? 'bg-[#05161A] text-cyan-300' 
-                              : 'bg-sky-400 text-slate-950'
-                            : isDark
-                              ? 'bg-[#08252C] text-cyan-200'
-                              : 'bg-white text-slate-700 border border-sky-200 shadow-sm'
-                        }`}>
-                          {p.score}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Resume Input Zone */}
-              <div className={`p-4 rounded-2xl border ${
-                isDark 
-                  ? 'bg-[#08252C] border-cyan-800/40' 
-                  : 'bg-white border-sky-200 shadow-sm'
-              }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-cyan-400">📤</span>
-                    <h2 className="text-xs font-bold uppercase tracking-wider font-mono">Resume Input</h2>
-                  </div>
-                  <span className={`text-[10px] font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                    PDF, DOCX, TXT
-                  </span>
-                </div>
-
-                {/* Hidden File Input */}
-                <input
-                  type="file"
-                  id="cvFileInput"
-                  accept=".pdf,.txt"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-
-                {/* Dropzone with Native Drag-and-Drop */}
-                <div
-                  onClick={() => document.getElementById("cvFileInput")?.click()}
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-                  onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-                  onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(false);
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) {
-                      setUploadedFile(file);
-                      await uploadAndEvaluate(file);
-                    }
-                  }}
-                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition ${
-                  isDragging
-                    ? isDark
-                      ? 'border-cyan-300 bg-cyan-500/20 ring-2 ring-cyan-400'
-                      : 'border-blue-600 bg-blue-100 ring-2 ring-blue-500'
-                    : isDark
-                      ? 'border-cyan-500/30 bg-[#0B3039]/40 hover:bg-[#0B3039]/80 hover:border-cyan-400'
-                      : 'border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-blue-500'
-                }`}>
-                  <div className="w-10 h-10 mx-auto rounded-full flex items-center justify-center mb-2 bg-cyan-500/10 text-cyan-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                  </div>
-                  <p className="text-xs font-semibold">Drop candidate CV or <span className="text-cyan-500 underline font-bold">Browse</span></p>
-                  <p className={`text-[10px] mt-1 ${isDark ? 'text-cyan-200/50' : 'text-slate-500'}`}>Max file size: 10MB</p>
-                </div>
-
-                {/* Uploaded File Chip */}
-                <div className={`mt-3 p-2.5 rounded-xl border flex items-center justify-between ${
-                  isDark
-                    ? 'bg-[#05161A] border-cyan-500/20 text-cyan-200'
-                    : 'bg-sky-50 border-sky-200 text-slate-800'
-                }`}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <span className="text-xs font-mono font-medium truncate">{activeData.fileName}</span>
-                  </div>
-                  <span className={`text-[10px] font-mono shrink-0 ml-2 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                    {activeData.fileSize}
-                  </span>
-                </div>
-
-                {/* Collapsible raw text notice */}
-                <button
-                  type="button"
-                  onClick={() => setShowPasteText(!showPasteText)}
-                  className={`w-full mt-3 text-left flex items-center justify-between text-xs font-medium py-1 px-1 transition ${
-                  isDark ? 'text-cyan-300/70 hover:text-cyan-200' : 'text-sky-800 hover:text-sky-950'
-                }`}>
-                  <span>Or Paste Raw Resume Text</span>
-                  <span className="font-bold">{showPasteText ? '▼' : '›'}</span>
-                </button>
-
-                {showPasteText && (
-                  <div className="mt-2 space-y-2">
-                    <textarea
-                      rows="4"
-                      value={pastedText}
-                      onChange={(e) => setPastedText(e.target.value)}
-                      placeholder="Paste resume text (Experience, Skills, Education)..."
-                      className={`w-full p-2.5 rounded-xl border text-xs font-mono outline-none resize-none transition ${
-                        isDark
-                          ? 'bg-[#05161A] border-cyan-800/40 text-cyan-200 placeholder:text-cyan-700 focus:border-cyan-400'
-                          : 'bg-white border-sky-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-500'
-                      }`}
-                    ></textarea>
-                    <button
-                      type="button"
-                      onClick={handlePasteEvaluate}
-                      disabled={isEvaluating || !pastedText.trim()}
-                      className={`w-full py-2 px-3 rounded-lg text-xs font-bold font-mono transition ${
-                        isDark
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 hover:bg-cyan-500/30'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                    >
-                      Analyze Pasted Text
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Inference Selector */}
-              <div className={`p-4 rounded-2xl border ${
-                isDark 
-                  ? 'bg-[#08252C] border-cyan-800/40' 
-                  : 'bg-white border-sky-200 shadow-sm'
-              }`}>
-                <h2 className="text-xs font-bold uppercase tracking-wider font-mono mb-3">Inference Architecture</h2>
-                <div className="space-y-2">
-                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                    modelType === 'dual'
-                      ? isDark
-                        ? 'bg-[#0B3039] border-cyan-400 text-white'
-                        : 'bg-sky-50 border-blue-500 text-slate-900 ring-1 ring-blue-400'
-                      : isDark
-                        ? 'border-cyan-900/30 text-cyan-200/70 hover:bg-[#0B3039]/40'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="model"
-                      checked={modelType === 'dual'}
-                      onChange={() => setModelType('dual')}
-                      className="mt-0.5 text-cyan-500 focus:ring-cyan-400"
-                    />
-                    <div>
-                      <p className="text-xs font-bold">Dual-Branch Deep Net (PyTorch)</p>
-                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                        5000-dim TF-IDF Text Branch + 13 Heuristic Structural Features
-                      </p>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
-                    modelType === 'baseline'
-                      ? isDark
-                        ? 'bg-[#0B3039] border-cyan-400 text-white'
-                        : 'bg-sky-50 border-blue-500 text-slate-900 ring-1 ring-blue-400'
-                      : isDark
-                        ? 'border-cyan-900/30 text-cyan-200/70 hover:bg-[#0B3039]/40'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="model"
-                      checked={modelType === 'baseline'}
-                      onChange={() => setModelType('baseline')}
-                      className="mt-0.5 text-cyan-500 focus:ring-cyan-400"
-                    />
-                    <div>
-                      <p className="text-xs font-bold">Baseline Logistic Regression</p>
-                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                        TF-IDF Unigram/Bigram Linear Classifier (Ablation Benchmark)
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Action Button */}
+            {/* Top Brand / Logo */}
+            <div className="flex md:flex-col items-center gap-2">
               <button
-                onClick={handleRunEval}
-                disabled={isEvaluating}
-                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 transition active:scale-[0.98] ${
-                  isDark
-                    ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] hover:brightness-110 shadow-cyan-500/20'
-                    : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20'
+                onClick={() => setCurrentView("welcome")}
+                className={`relative group flex items-center justify-center w-11 h-11 rounded-2xl border backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+                  isDark 
+                    ? 'bg-gradient-to-tr from-cyan-500 to-teal-400 text-[#05161A] border-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.35)]' 
+                    : 'bg-gradient-to-tr from-blue-700 to-sky-500 text-white border-blue-400 shadow-md shadow-blue-500/20'
                 }`}
+                title="Return to Welcome Screen"
               >
-                {isEvaluating ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                    </svg>
-                    <span>Processing Neural Weights...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M12 2L14.4 7.2L20 8L16 12.1L17 17.8L12 15L7 17.8L8 12.1L4 8L9.6 7.2L12 2Z"/>
-                    </svg>
-                    <span>Run Explainable Evaluation</span>
-                  </>
-                )}
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2L14.4 7.2L20 8L16 12.1L17 17.8L12 15L7 17.8L8 12.1L4 8L9.6 7.2L12 2Z" />
+                </svg>
+                {/* Tooltip */}
+                <div className={`hidden md:block absolute left-full ml-3 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl ${
+                  isDark ? 'bg-[#08252C] border border-cyan-500/40 text-cyan-200' : 'bg-slate-900 text-white'
+                }`}>
+                  Overview & Home
+                </div>
               </button>
-
-              {/* Explainability Trust Guarantee */}
-              <div className={`p-3.5 rounded-xl border text-xs ${
-                isDark 
-                  ? 'bg-[#08252C]/60 border-cyan-900/30 text-cyan-200/70' 
-                  : 'bg-white border-sky-200 text-slate-600 shadow-sm'
+              <span className={`text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-full font-bold border hidden md:block ${
+                isDark ? 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300' : 'bg-sky-100 border-sky-300 text-sky-800'
               }`}>
-                <div className="flex items-center gap-1.5 font-semibold text-cyan-400 dark:text-cyan-300 mb-1">
-                  <span>🛡️</span>
-                  <span>Explainability Guarantee</span>
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  Zero black-box decisions. CV quality score is strictly computed from reproducible linguistic, structural, and impact heuristics.
-                </p>
-              </div>
+                v2.4
+              </span>
+            </div>
 
-            </aside>
-
-            {/* Right Column: Dashboard & Interactive Analytics */}
-            <section className="lg:col-span-8 xl:col-span-9 space-y-6">
-
-              {/* Top KPI Cards (Grid of 4) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                
-                {/* 1. Overall Score Radial Gauge */}
-                <div className={`p-4 rounded-2xl border relative overflow-hidden transition-all ${
-                  isDark 
-                    ? 'bg-[#08252C] border-cyan-800/40' 
-                    : 'bg-white border-sky-200 shadow-sm'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono uppercase font-bold tracking-wider">CV Quality Score</span>
-                    <span className="text-cyan-400 text-sm">🔖</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-center">
-                    <div className="relative w-28 h-28 flex items-center justify-center">
-                      <svg className="w-full h-full" viewBox="0 0 100 100">
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          className={isDark ? "stroke-cyan-950/80" : "stroke-slate-100"}
-                          strokeWidth="8"
-                          fill="transparent"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="45"
-                          className={`score-circle ${
-                            isDark 
-                              ? 'stroke-cyan-400' 
-                              : activeData.score >= 80 ? 'stroke-blue-600' : activeData.score >= 60 ? 'stroke-amber-500' : 'stroke-rose-500'
-                          }`}
-                          style={{ '--score-val': activeData.score }}
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          fill="transparent"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-2xl font-black font-mono tracking-tight">{activeData.score}</span>
-                        <span className={`text-[10px] font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/100</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-center">
-                    <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                      activeData.score >= 80
-                        ? isDark ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : activeData.score >= 60
-                          ? isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-800 border border-amber-200'
-                          : isDark ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-rose-100 text-rose-800 border border-rose-200'
-                    }`}>
-                      {activeData.tier}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. Predicted Job Category */}
-                <div className={`p-4 rounded-2xl border flex flex-col justify-between ${
-                  isDark 
-                    ? 'bg-[#08252C] border-cyan-800/40' 
-                    : 'bg-white border-sky-200 shadow-sm'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase font-bold tracking-wider">Class Match</span>
-                      <span className="text-cyan-400 text-sm">📈</span>
-                    </div>
-                    <div className="mt-3">
-                      <h3 className="text-lg font-extrabold tracking-tight truncate">{activeData.role}</h3>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                        24 trained classes
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-cyan-900/30 dark:border-cyan-900/30 flex items-center justify-between">
-                    <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
-                      isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-blue-900 text-white'
-                    }`}>
-                      {activeData.confidence} Prob
-                    </span>
-                    <span className={`text-[11px] font-mono ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
-                      Softmax Top-1
-                    </span>
-                  </div>
-                </div>
-
-                {/* 3. Skill Coverage */}
-                <div className={`p-4 rounded-2xl border flex flex-col justify-between ${
-                  isDark 
-                    ? 'bg-[#08252C] border-cyan-800/40' 
-                    : 'bg-white border-sky-200 shadow-sm'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase font-bold tracking-wider">Skill Coverage</span>
-                      <span className="text-teal-400 text-sm">🎯</span>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-2xl font-black font-mono">{activeData.skillsFound}</span>
-                      <span className={`text-xs font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/ {activeData.totalSkills}</span>
-                    </div>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                      In-demand keywords detected
-                    </p>
-                  </div>
-                  <div className="mt-4">
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-gradient-to-r from-teal-400 to-cyan-300' : 'bg-blue-600'}`}
-                        style={{ width: `${activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}%` }}
-                      ></div>
-                    </div>
-                    <span className={`text-[10px] font-mono block mt-1 text-right ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
-                      {activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}% match
-                    </span>
-                  </div>
-                </div>
-
-                {/* 4. Actionable Suggestions */}
-                <div className={`p-4 rounded-2xl border flex flex-col justify-between ${
-                  isDark 
-                    ? 'bg-[#08252C] border-cyan-800/40' 
-                    : 'bg-white border-sky-200 shadow-sm'
-                }`}>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase font-bold tracking-wider">Suggestions</span>
-                      <span className="text-amber-400 text-sm">⚠️</span>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-2xl font-black font-mono text-amber-500 dark:text-amber-400">{activeData.tipsCount}</span>
-                      <span className="text-xs font-medium">Tips</span>
-                    </div>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                      Targeted heuristic fixes
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-cyan-900/30 dark:border-cyan-900/30 flex items-center justify-between">
+            {/* Center Navigation Icons */}
+            <nav className="flex md:flex-col items-center gap-2 md:gap-3.5 my-auto">
+              {[
+                {
+                  id: "input",
+                  label: "Resume Input & Presets",
+                  badge: "1",
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                  )
+                },
+                {
+                  id: "scorecard",
+                  label: "Executive Scorecard & Pillars",
+                  badge: "2",
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                    </svg>
+                  )
+                },
+                {
+                  id: "skills",
+                  label: "Skill Gap & Market Demand",
+                  badge: "3",
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zm-7.518-.267A8.25 8.25 0 1120.25 10.5M8.288 14.212A5.25 5.25 0 1117.25 10.5" />
+                    </svg>
+                  )
+                },
+                {
+                  id: "model",
+                  label: "AI Model Lab & Softmax XAI",
+                  badge: "4",
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
+                  )
+                }
+              ].map((tab) => {
+                const isActive = dashboardTab === tab.id;
+                return (
+                  <div key={tab.id} className="relative group">
                     <button
-                      onClick={() => setActiveTab("breakdown")}
-                      className={`text-xs font-semibold hover:underline flex items-center gap-1 ${
-                        isDark ? 'text-cyan-300' : 'text-blue-900'
-                      }`}
-                    >
-                      Review Diagnostics →
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Tab Navigation (High-Contrast Menu Styling) */}
-              <div className={`p-1.5 rounded-2xl border flex flex-wrap gap-1 transition-all ${
-                isDark 
-                  ? 'bg-[#08252C] border-cyan-800/40' 
-                  : 'bg-white border-sky-200 shadow-sm'
-              }`}>
-                {[
-                  { id: "roles", label: "Role Probabilities", icon: "📊" },
-                  { id: "breakdown", label: "0–100 Score Breakdown", icon: "🎯" },
-                  { id: "skills", label: "Skill Gap Matrix", icon: "⚡" },
-                  { id: "parsed", label: "Parsed Text & Features", icon: "📄" }
-                ].map(tab => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex-1 min-w-[170px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                      onClick={() => setDashboardTab(tab.id)}
+                      className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border transition-all duration-300 active:scale-95 ${
                         isActive
                           ? isDark
-                            ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] shadow-md shadow-cyan-400/20 font-extrabold'
-                            : 'bg-slate-900 text-white shadow-md'
+                            ? 'bg-gradient-to-tr from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.35)] scale-105'
+                            : 'bg-slate-900 text-white border-slate-800 shadow-lg shadow-slate-900/25 scale-105'
                           : isDark
-                            ? 'text-cyan-200/70 hover:text-cyan-100 hover:bg-[#0B3039]'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-sky-50'
+                            ? 'bg-[#08252C]/60 hover:bg-[#0B3039] border-cyan-900/30 text-cyan-300/60 hover:text-cyan-100 hover:border-cyan-500/40'
+                            : 'bg-white/80 hover:bg-sky-50 border-sky-200 text-slate-500 hover:text-slate-900 shadow-sm'
                       }`}
+                      aria-label={tab.label}
                     >
-                      <span>{tab.icon}</span>
-                      <span>{tab.label}</span>
+                      {/* Active Indicator on Desktop Left Edge */}
+                      {isActive && (
+                        <span className="hidden md:block absolute -left-3 top-2.5 bottom-2.5 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"></span>
+                      )}
+                      {tab.icon}
                     </button>
-                  );
-                })}
-              </div>
 
-              {/* Tab Content Display */}
-              <div className={`p-6 rounded-2xl border transition-all ${
-                isDark 
-                  ? 'bg-[#08252C] border-cyan-800/40 shadow-xl shadow-cyan-950/20' 
-                  : 'bg-white border-sky-200 shadow-md'
-              }`}>
-                
-                {/* TAB 1: Role Probabilities */}
-                {activeTab === "roles" && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-base font-extrabold tracking-tight">Top-5 Predicted Occupational Classes</h3>
-                        <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                          Softmax probability distribution output from the classification head
-                        </p>
-                      </div>
-                      <span className={`text-[11px] font-mono px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0 ${
-                        isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' : 'bg-sky-100 text-sky-800 border border-sky-200'
-                      }`}>
-                        PyTorch Dual-Branch
-                      </span>
-                    </div>
-
-                    {/* Bars */}
-                    <div className="space-y-4">
-                      {activeData.topRoles.map((role, idx) => (
-                        <div key={idx} className="space-y-1.5">
-                          <div className="flex items-center justify-between text-xs font-mono">
-                            <div className="flex items-center gap-2">
-                              <span className={isDark ? 'text-cyan-400 font-bold' : 'text-slate-500'}>{idx + 1}.</span>
-                              <span className={`font-semibold ${role.isTop ? (isDark ? 'text-cyan-300 font-bold' : 'text-blue-900 font-bold') : ''}`}>
-                                {role.name}
-                              </span>
-                              {role.isTop && (
-                                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded ${
-                                  isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-blue-900 text-white'
-                                }`}>
-                                  TOP MATCH
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-bold">{role.prob}%</span>
-                          </div>
-                          <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                role.isTop
-                                  ? isDark ? 'bg-gradient-to-r from-cyan-400 to-teal-300' : 'bg-blue-600'
-                                  : isDark ? 'bg-[#0B3039]' : 'bg-slate-300'
-                              }`}
-                              style={{ width: `${role.prob}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Attribution Callout */}
-                    <div className={`p-4 rounded-xl border flex items-start gap-3.5 ${
+                    {/* Tooltip (Desktop Hover) */}
+                    <div className={`hidden md:block absolute left-full ml-3.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-2xl border backdrop-blur-xl ${
                       isDark 
-                        ? 'bg-[#05161A]/80 border-cyan-500/30 text-cyan-100' 
-                        : 'bg-sky-50 border-sky-200 text-slate-800'
+                        ? 'bg-[#08252C] border-cyan-500/40 text-cyan-200 shadow-cyan-950/80' 
+                        : 'bg-slate-900 border-slate-800 text-white shadow-slate-900/40'
                     }`}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-400/20 text-amber-500 font-bold text-sm">
-                        💡
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-amber-500 dark:text-amber-400">
-                          Explainability Attribution: Why This Category?
-                        </h4>
-                        <p className="text-xs mt-1 leading-relaxed">
-                          {activeData.attribution}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <span className="opacity-60 font-mono text-[10px]">{tab.badge}.</span>
+                        <span>{tab.label}</span>
                       </div>
                     </div>
                   </div>
-                )}
+                );
+              })}
+            </nav>
 
-                {/* TAB 2: 0-100 Score Breakdown */}
-                {activeTab === "breakdown" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-base font-extrabold tracking-tight">Transparent Quality Score Breakdown</h3>
+            {/* Bottom Utility Actions */}
+            <div className="flex md:flex-col items-center gap-2">
+              {/* Theme Toggle */}
+              <div className="relative group">
+                <button
+                  onClick={() => setIsDark(!isDark)}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${
+                    isDark
+                      ? 'bg-[#08252C] border-cyan-800/40 text-cyan-300 hover:bg-[#0B3039]'
+                      : 'bg-white border-sky-200 text-slate-700 hover:bg-sky-50 shadow-sm'
+                  }`}
+                  title={isDark ? "Switch to Sky Light Mode" : "Switch to Abyss Dark Mode"}
+                >
+                  {isDark ? (
+                    <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="5" strokeWidth="2"/>
+                      <path strokeWidth="2" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeWidth="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                    </svg>
+                  )}
+                </button>
+                <div className={`hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 border ${
+                  isDark ? 'bg-[#08252C] border-cyan-800 text-cyan-200' : 'bg-slate-900 border-slate-800 text-white'
+                }`}>
+                  {isDark ? "Light Mode" : "Dark Mode"}
+                </div>
+              </div>
+
+              {/* Tech Report Modal Trigger */}
+              <div className="relative group">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${
+                    isDark
+                      ? 'bg-[#08252C] border-cyan-800/40 text-cyan-200 hover:bg-[#0B3039]'
+                      : 'bg-white border-sky-200 text-slate-700 hover:bg-sky-50 shadow-sm'
+                  }`}
+                  title="View Technical Report Specs"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </button>
+                <div className={`hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 border ${
+                  isDark ? 'bg-[#08252C] border-cyan-800 text-cyan-200' : 'bg-slate-900 border-slate-800 text-white'
+                }`}>
+                  Technical Report
+                </div>
+              </div>
+
+              {/* Return to Overview */}
+              <div className="relative group">
+                <button
+                  onClick={() => setCurrentView("welcome")}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${
+                    isDark
+                      ? 'bg-[#08252C] border-cyan-800/40 text-cyan-300 hover:bg-[#0B3039]'
+                      : 'bg-white border-sky-200 text-slate-700 hover:bg-sky-50 shadow-sm'
+                  }`}
+                  title="Back to Overview"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                  </svg>
+                </button>
+                <div className={`hidden md:block absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 border ${
+                  isDark ? 'bg-[#08252C] border-cyan-800 text-cyan-200' : 'bg-slate-900 border-slate-800 text-white'
+                }`}>
+                  Back to Overview
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Canvas Area */}
+          <div className="flex-1 min-w-0 flex flex-col min-h-screen relative z-10">
+            
+            {/* Top Bar (Breadcrumb & Executive Header) */}
+            <header className={`sticky top-0 z-30 border-b backdrop-blur-xl px-4 sm:px-6 py-3.5 transition-colors ${
+              isDark 
+                ? 'bg-[#05161A]/85 border-cyan-900/40 text-white shadow-sm' 
+                : 'bg-white/90 border-sky-200/80 shadow-sm text-slate-900'
+            }`}>
+              <div className="flex items-center justify-between gap-3">
+                {/* Left: Active View Title & Breadcrumb */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-mono font-bold tracking-wider uppercase ${isDark ? 'text-cyan-400' : 'text-indigo-600'}`}>
+                        {dashboardTab === "input" && "Input & Candidate Selection"}
+                        {dashboardTab === "scorecard" && "Executive Quality Scorecard"}
+                        {dashboardTab === "skills" && "Skill Gap Matrix & Market Demand"}
+                        {dashboardTab === "model" && "AI Model Inspector & Softmax Distribution"}
+                      </span>
+                      <span className="opacity-30">•</span>
+                      <span className={`text-xs font-semibold truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {activeData.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        activeData.score >= 80 
+                          ? isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-emerald-100 text-emerald-800'
+                          : activeData.score >= 60 
+                            ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'
+                            : isDark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {activeData.tier}
+                      </span>
+                      <span className={`text-xs ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                        Predicted Target: <strong className="font-bold text-slate-200 dark:text-cyan-100">{activeData.role}</strong> ({activeData.confidence})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Quick Actions */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {/* File Chip */}
+                  <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono ${
+                    isDark ? 'bg-[#08252C] border-cyan-800/40 text-cyan-200' : 'bg-sky-50 border-sky-200 text-slate-700'
+                  }`}>
+                    <span className="text-cyan-400">📄</span>
+                    <span className="truncate max-w-[150px]">{activeData.fileName}</span>
+                    <span className="opacity-50">({activeData.fileSize})</span>
+                  </div>
+
+                  {/* Context Switcher Button */}
+                  {dashboardTab !== "input" ? (
+                    <button
+                      onClick={() => setDashboardTab("input")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                        isDark 
+                          ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 shadow-md shadow-cyan-400/20 hover:brightness-110' 
+                          : 'bg-slate-900 text-white border-slate-800 shadow-sm hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>📥</span>
+                      <span>Change CV / Presets</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setDashboardTab("scorecard")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                        isDark 
+                          ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 shadow-md shadow-cyan-400/20 hover:brightness-110' 
+                          : 'bg-slate-900 text-white border-slate-800 shadow-sm hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>📊</span>
+                      <span>View Scorecard</span>
+                    </button>
+                  )}
+
+                  {/* Engine Status */}
+                  <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-medium ${
+                    isDark 
+                      ? 'bg-[#08252C] border-cyan-500/30 text-cyan-300' 
+                      : 'bg-white border-sky-200 text-slate-700 shadow-sm'
+                  }`}>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Online</span>
+                  </div>
+
+                  {/* Reset */}
+                  <button
+                    onClick={() => handlePresetChange("senior")}
+                    title="Reset to default senior engineer state"
+                    className={`p-2 rounded-xl border transition ${
+                      isDark
+                        ? 'border-cyan-900/40 text-cyan-400/80 hover:bg-[#08252C] hover:text-cyan-200'
+                        : 'border-sky-200 text-slate-600 hover:bg-sky-50 shadow-sm'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Dynamic Content Canvas */}
+            <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+              
+              {/* VIEW 1: Input & Presets */}
+              {dashboardTab === "input" && (
+                <div className="animate-page grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left (7 cols): Input Zone */}
+                  <div className="lg:col-span-7 space-y-5">
+                    {/* Upload Card */}
+                    <div className={`p-6 rounded-2xl border ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                    }`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">📤</span>
+                          <div>
+                            <h2 className="text-sm font-bold uppercase tracking-wider font-mono">Resume Document Input</h2>
+                            <p className={`text-xs ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>Upload candidate CV for instant multi-branch feature extraction</p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                          isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' : 'bg-sky-100 text-sky-800 border border-sky-200'
+                        }`}>
+                          PDF, DOCX, TXT
+                        </span>
+                      </div>
+
+                      {/* Hidden File Input */}
+                      <input
+                        type="file"
+                        id="cvFileInput"
+                        accept=".pdf,.txt"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+
+                      {/* Dropzone with Native Drag-and-Drop */}
+                      <div
+                        onClick={() => document.getElementById("cvFileInput")?.click()}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragging(false);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) {
+                            setUploadedFile(file);
+                            await uploadAndEvaluate(file);
+                          }
+                        }}
+                        className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                          isDragging
+                            ? isDark
+                              ? 'border-cyan-300 bg-cyan-500/20 ring-4 ring-cyan-400/20 scale-[1.01]'
+                              : 'border-blue-600 bg-blue-100 ring-4 ring-blue-500/20 scale-[1.01]'
+                            : isDark
+                              ? 'border-cyan-500/30 bg-[#0B3039]/40 hover:bg-[#0B3039]/80 hover:border-cyan-400'
+                              : 'border-sky-300 bg-sky-50/50 hover:bg-sky-100 hover:border-blue-500'
+                        }`}
+                      >
+                        <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-3 bg-cyan-500/10 text-cyan-400">
+                          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                          </svg>
+                        </div>
+                        <p className="text-sm font-bold">Drop candidate resume here, or <span className="text-cyan-500 underline font-extrabold">Browse Computer</span></p>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/50' : 'text-slate-500'}`}>Supports clean text extraction via PyPDF • Max 10MB</p>
+                      </div>
+
+                      {/* Active File Chip */}
+                      <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between ${
+                        isDark ? 'bg-[#05161A] border-cyan-500/20 text-cyan-200' : 'bg-sky-50 border-sky-200 text-slate-800'
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-cyan-400 text-base">📑</span>
+                          <span className="text-xs font-mono font-semibold truncate">{activeData.fileName}</span>
+                        </div>
+                        <span className={`text-xs font-mono shrink-0 ml-2 font-bold ${isDark ? 'text-cyan-300/80' : 'text-slate-600'}`}>
+                          {activeData.fileSize}
+                        </span>
+                      </div>
+
+                      {/* Collapsible raw text editor */}
+                      <div className="mt-4 pt-3 border-t border-cyan-900/30">
+                        <button
+                          type="button"
+                          onClick={() => setShowPasteText(!showPasteText)}
+                          className={`w-full text-left flex items-center justify-between text-xs font-semibold py-1 transition ${
+                            isDark ? 'text-cyan-300 hover:text-cyan-100' : 'text-sky-800 hover:text-sky-950'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>📝</span>
+                            <span>Or Paste Raw Resume Text Directly</span>
+                          </span>
+                          <span className="font-bold text-sm">{showPasteText ? '▼' : '›'}</span>
+                        </button>
+
+                        {showPasteText && (
+                          <div className="mt-3 space-y-2.5">
+                            <textarea
+                              rows="5"
+                              value={pastedText}
+                              onChange={(e) => setPastedText(e.target.value)}
+                              placeholder="Paste resume text (Experience, Skills, Education, Projects)..."
+                              className={`w-full p-3 rounded-xl border text-xs font-mono outline-none resize-none transition ${
+                                isDark
+                                  ? 'bg-[#05161A] border-cyan-800/40 text-cyan-200 placeholder:text-cyan-700 focus:border-cyan-400'
+                                  : 'bg-white border-sky-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-500'
+                              }`}
+                            ></textarea>
+                            <button
+                              type="button"
+                              onClick={handlePasteEvaluate}
+                              disabled={isEvaluating || !pastedText.trim()}
+                              className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold font-mono transition active:scale-95 ${
+                                isDark
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 hover:bg-cyan-500/30'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
+                            >
+                              Analyze Pasted Text
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inference Architecture Selector */}
+                    <div className={`p-5 rounded-2xl border ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40' : 'bg-white border-sky-200 shadow-sm'
+                    }`}>
+                      <h2 className="text-xs font-bold uppercase tracking-wider font-mono mb-3">Model Inference Engine</h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition ${
+                          modelType === 'dual'
+                            ? isDark
+                              ? 'bg-[#0B3039] border-cyan-400 text-white ring-1 ring-cyan-400/40'
+                              : 'bg-sky-50 border-blue-500 text-slate-900 ring-1 ring-blue-400'
+                            : isDark
+                              ? 'border-cyan-900/30 text-cyan-200/70 hover:bg-[#0B3039]/40'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="model"
+                            checked={modelType === 'dual'}
+                            onChange={() => setModelType('dual')}
+                            className="mt-0.5 text-cyan-500 focus:ring-cyan-400"
+                          />
+                          <div>
+                            <p className="text-xs font-bold">Dual-Branch Deep Net</p>
+                            <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
+                              5000-dim TF-IDF + 13 Heuristic Numerical Features (PyTorch)
+                            </p>
+                          </div>
+                        </label>
+
+                        <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition ${
+                          modelType === 'baseline'
+                            ? isDark
+                              ? 'bg-[#0B3039] border-cyan-400 text-white ring-1 ring-cyan-400/40'
+                              : 'bg-sky-50 border-blue-500 text-slate-900 ring-1 ring-blue-400'
+                            : isDark
+                              ? 'border-cyan-900/30 text-cyan-200/70 hover:bg-[#0B3039]/40'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="model"
+                            checked={modelType === 'baseline'}
+                            onChange={() => setModelType('baseline')}
+                            className="mt-0.5 text-cyan-500 focus:ring-cyan-400"
+                          />
+                          <div>
+                            <p className="text-xs font-bold">Logistic Regression</p>
+                            <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
+                              Fast TF-IDF Linear Baseline (0.586 Macro-F1 Ablation)
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Primary Run Button */}
+                    <button
+                      onClick={handleRunEval}
+                      disabled={isEvaluating}
+                      className={`w-full py-4 px-6 rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2.5 transition active:scale-[0.98] ${
+                        isDark
+                          ? 'bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400 text-[#05161A] hover:brightness-110 shadow-cyan-500/25'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/25'
+                      }`}
+                    >
+                      {isEvaluating ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-current" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                          </svg>
+                          <span>Computing Multi-Branch Feature Embeddings...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 2L14.4 7.2L20 8L16 12.1L17 17.8L12 15L7 17.8L8 12.1L4 8L9.6 7.2L12 2Z"/>
+                          </svg>
+                          <span className="text-base">Run Explainable Evaluation</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Right (5 cols): Presets & Explainability */}
+                  <div className="lg:col-span-5 space-y-5">
+                    {/* Presets Card */}
+                    <div className={`p-6 rounded-2xl border transition-all ${
+                      isDark 
+                        ? 'bg-[#08252C] border-cyan-800/40 shadow-xl shadow-cyan-950/20' 
+                        : 'bg-white border-sky-200 shadow-md'
+                    }`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-400 font-bold text-lg">⚡</span>
+                          <h2 className="text-sm font-bold uppercase tracking-wider font-mono">Viva Demo Presets</h2>
+                        </div>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                          isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' : 'bg-sky-100 text-sky-800 border border-sky-200'
+                        }`}>
+                          1-Click Load
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {[
+                          { key: "senior", icon: "💻", title: "Senior Full-Stack Engineer", subtitle: "Software Developer", score: "86/100", tier: "Excellent" },
+                          { key: "finance", icon: "📊", title: "Financial Analyst", subtitle: "Finance / Banking", score: "68/100", tier: "Good" },
+                          { key: "hr", icon: "🤝", title: "HR Coordinator", subtitle: "Human Resources", score: "44/100", tier: "Needs Work" }
+                        ].map((p) => {
+                          const isSelected = activePresetKey === p.key;
+                          return (
+                            <button
+                              key={p.key}
+                              onClick={() => handlePresetChange(p.key)}
+                              className={`w-full text-left p-3.5 rounded-xl border flex items-center justify-between transition-all group ${
+                                isSelected
+                                  ? isDark
+                                    ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-[#05161A] border-cyan-300 font-semibold shadow-md shadow-cyan-400/20 scale-[1.01]'
+                                    : 'bg-slate-900 text-white border-slate-800 shadow-lg scale-[1.01]'
+                                  : isDark
+                                    ? 'bg-[#0B3039]/70 hover:bg-[#0E3C47] border-cyan-900/30 text-cyan-100/90 hover:border-cyan-500/40'
+                                    : 'bg-sky-50/70 hover:bg-sky-100 border-sky-100 text-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="text-xl p-2 rounded-lg bg-black/10 dark:bg-black/20">{p.icon}</span>
+                                <div className="truncate">
+                                  <p className="text-xs font-bold truncate leading-snug">{p.title}</p>
+                                  <p className={`text-[11px] truncate ${
+                                    isSelected 
+                                      ? isDark ? 'text-[#05161A]/80 font-medium' : 'text-sky-200' 
+                                      : isDark ? 'text-cyan-300/60' : 'text-slate-500'
+                                  }`}>{p.subtitle}</p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 ml-2">
+                                <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md block ${
+                                  isSelected
+                                    ? isDark 
+                                      ? 'bg-[#05161A] text-cyan-300' 
+                                      : 'bg-sky-400 text-slate-950'
+                                    : isDark
+                                      ? 'bg-[#08252C] text-cyan-200'
+                                      : 'bg-white text-slate-700 border border-sky-200 shadow-sm'
+                                }`}>
+                                  {p.score}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Trust Guarantee */}
+                    <div className={`p-5 rounded-2xl border text-xs ${
+                      isDark 
+                        ? 'bg-[#08252C]/60 border-cyan-900/30 text-cyan-200/70' 
+                        : 'bg-white border-sky-200 text-slate-600 shadow-sm'
+                    }`}>
+                      <div className="flex items-center gap-2 font-bold text-cyan-400 dark:text-cyan-300 mb-2 text-sm">
+                        <span>🛡️</span>
+                        <span>Transparent Heuristics</span>
+                      </div>
+                      <p className="text-xs leading-relaxed">
+                        Every diagnostic assessment and quality tier is derived deterministically from quantifiable metrics (numbers, verbs, readability, section headers). Zero hidden black-box bias.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW 2: Executive Scorecard */}
+              {dashboardTab === "scorecard" && (
+                <div className="animate-page space-y-6">
+                  {/* Top 4 KPI Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {/* 1. Overall Score Radial Gauge */}
+                    <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono uppercase font-bold tracking-wider">CV Quality Score</span>
+                        <span className="text-cyan-400 text-base">🔖</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-center">
+                        <div className="relative w-28 h-28 flex items-center justify-center">
+                          <svg className="w-full h-full" viewBox="0 0 100 100">
+                            <circle
+                              cx="50"
+                              cy="50"
+                              r="45"
+                              className={isDark ? "stroke-cyan-950/80" : "stroke-slate-100"}
+                              strokeWidth="8"
+                              fill="transparent"
+                            />
+                            <circle
+                              cx="50"
+                              cy="50"
+                              r="45"
+                              className={`score-circle ${
+                                isDark 
+                                  ? 'stroke-cyan-400' 
+                                  : activeData.score >= 80 ? 'stroke-blue-600' : activeData.score >= 60 ? 'stroke-amber-500' : 'stroke-rose-500'
+                              }`}
+                              style={{ '--score-val': activeData.score }}
+                              strokeWidth="8"
+                              strokeLinecap="round"
+                              fill="transparent"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-2xl font-black font-mono tracking-tight">{activeData.score}</span>
+                            <span className={`text-[10px] font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/100</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-center">
+                        <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
+                          activeData.score >= 80
+                            ? isDark ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : activeData.score >= 60
+                              ? isDark ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : isDark ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-rose-100 text-rose-800 border border-rose-200'
+                        }`}>
+                          {activeData.tier}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 2. Predicted Job Category */}
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
+                    }`}>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono uppercase font-bold tracking-wider">Class Match</span>
+                          <span className="text-cyan-400 text-base">📈</span>
+                        </div>
+                        <div className="mt-3">
+                          <h3 className="text-lg font-extrabold tracking-tight truncate">{activeData.role}</h3>
+                          <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                            24 trained occupational classes
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-cyan-900/30 flex items-center justify-between">
+                        <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-md ${
+                          isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-blue-900 text-white'
+                        }`}>
+                          {activeData.confidence} Prob
+                        </span>
+                        <span className={`text-[11px] font-mono ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
+                          Softmax Top-1
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 3. Skill Coverage */}
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
+                    }`}>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono uppercase font-bold tracking-wider">Skill Coverage</span>
+                          <span className="text-teal-400 text-base">🎯</span>
+                        </div>
+                        <div className="mt-3 flex items-baseline gap-2">
+                          <span className="text-2xl font-black font-mono">{activeData.skillsFound}</span>
+                          <span className={`text-xs font-mono ${isDark ? 'text-cyan-300/60' : 'text-slate-400'}`}>/ {activeData.totalSkills}</span>
+                        </div>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                          In-demand keywords detected
+                        </p>
+                      </div>
+                      <div className="mt-4">
+                        <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${isDark ? 'bg-gradient-to-r from-teal-400 to-cyan-300' : 'bg-blue-600'}`}
+                            style={{ width: `${activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className={`text-[10px] font-mono block mt-1 text-right ${isDark ? 'text-cyan-300/70' : 'text-slate-500'}`}>
+                          {activeData.totalSkills ? Math.min(100, Math.round((activeData.skillsFound / activeData.totalSkills) * 100)) : 0}% match
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 4. Actionable Suggestions */}
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-lg' : 'bg-white border-sky-200 shadow-sm'
+                    }`}>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono uppercase font-bold tracking-wider">Suggestions</span>
+                          <span className="text-amber-400 text-base">⚠️</span>
+                        </div>
+                        <div className="mt-3 flex items-baseline gap-2">
+                          <span className="text-2xl font-black font-mono text-amber-500 dark:text-amber-400">{activeData.tipsCount}</span>
+                          <span className="text-xs font-medium">Tips</span>
+                        </div>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                          Targeted heuristic fixes
+                        </p>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-cyan-900/30 flex items-center justify-between">
+                        <button
+                          onClick={() => setDashboardTab("skills")}
+                          className={`text-xs font-semibold hover:underline flex items-center gap-1 ${
+                            isDark ? 'text-cyan-300' : 'text-blue-900'
+                          }`}
+                        >
+                          Review Skill Gaps →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Dimension Cards */}
+                  <div className={`p-6 rounded-2xl border ${
+                    isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                  }`}>
+                    <div className="mb-4">
+                      <h3 className="text-base font-extrabold tracking-tight">Transparent 4-Factor Heuristic Breakdown</h3>
                       <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                        0–100 heuristic scoring matrix with verifiable target thresholds
+                        Scoring matrix based on quantifiable structural and linguistic deliverables
                       </p>
                     </div>
 
-                    {/* 4 Dimension Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {activeData.breakdown.map((item, idx) => (
                         <div key={idx} className={`p-4 rounded-xl border ${
@@ -1271,59 +2288,196 @@
                         </div>
                       ))}
                     </div>
+                  </div>
 
-                    {/* Diagnostic Feedback */}
-                    <div className={`p-4 rounded-xl border space-y-3 ${
-                      isDark ? 'bg-[#05161A]/80 border-cyan-500/20' : 'bg-sky-50 border-sky-200'
-                    }`}>
-                      <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Actionable Diagnostic Feedback</h4>
-                      <div className="space-y-2 text-xs">
-                        {activeData.strengths.map((str, i) => (
-                          <div key={i} className="flex items-start gap-2 text-emerald-600 dark:text-emerald-400">
-                            <span>✅</span>
-                            <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Strength:</strong> {str}</span>
-                          </div>
-                        ))}
-                        {activeData.improvements.map((imp, i) => (
-                          <div key={i} className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
-                            <span>⚠️</span>
-                            <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Improvement:</strong> {imp}</span>
-                          </div>
-                        ))}
-                        <div className="flex items-start gap-2 text-cyan-600 dark:text-cyan-300">
-                          <span>💡</span>
-                          <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Action Item:</strong> {activeData.actionItem}</span>
+                  {/* Diagnostic Feedback */}
+                  <div className={`p-6 rounded-2xl border space-y-3.5 ${
+                    isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                  }`}>
+                    <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Actionable Diagnostic Feedback</h4>
+                    <div className="space-y-2.5 text-xs">
+                      {activeData.strengths.map((str, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-emerald-600 dark:text-emerald-400">
+                          <span>✅</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Strength:</strong> {str}</span>
                         </div>
+                      ))}
+                      {activeData.improvements.map((imp, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-amber-600 dark:text-amber-400">
+                          <span>⚠️</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Improvement:</strong> {imp}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-start gap-2.5 text-cyan-600 dark:text-cyan-300">
+                        <span>💡</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-200"><strong className="font-bold">Action Item:</strong> {activeData.actionItem}</span>
                       </div>
                     </div>
-                  </div>
-                )}
 
-                {/* TAB 3: Skill Gap Matrix */}
-                {activeTab === "skills" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-base font-extrabold tracking-tight">Skill Gap Matrix (Demand vs. Supply)</h3>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                        Extracted skill taxonomy matched against market requirements for {activeData.role}
-                      </p>
+                    <div className="pt-4 border-t border-cyan-900/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <button
+                        onClick={() => setDashboardTab("skills")}
+                        className={`font-semibold hover:underline flex items-center gap-1.5 ${isDark ? 'text-cyan-300' : 'text-blue-900'}`}
+                      >
+                        <span>🎯</span>
+                        <span>Open Skill Gap Matrix →</span>
+                      </button>
+                      <button
+                        onClick={() => setDashboardTab("model")}
+                        className={`font-semibold hover:underline flex items-center gap-1.5 ${isDark ? 'text-cyan-300' : 'text-blue-900'}`}
+                      >
+                        <span>🧠</span>
+                        <span>Inspect Neural Network Weights &amp; Distribution →</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Entry Point 2: AI Coach Banner Card */}
+                  <div className={`p-5 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all relative overflow-hidden ${
+                    isDark 
+                      ? 'bg-gradient-to-r from-[#08252C] via-[#0B3039] to-[#08252C] border-cyan-500/40 shadow-[0_0_25px_rgba(0,240,255,0.12)]' 
+                      : 'bg-gradient-to-r from-sky-50 via-cyan-50 to-sky-50 border-cyan-300 shadow-md'
+                  }`}>
+                    <div className="flex items-start sm:items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                        ✨
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold font-mono text-cyan-300 tracking-wide uppercase">AI Bullet Coach</h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            {activeData.weakBulletsCount || (activeData.bullets ? activeData.bullets.filter(b => b.is_weak).length : 0)} Bullets Can Be Improved
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          Upgrade passive duties into quantified accomplishment statements with real-time CV re-scoring.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleOpenCoach()}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-400 to-teal-400 text-[#05161A] hover:brightness-110 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 shrink-0"
+                    >
+                      <span>💬</span>
+                      <span>Chat with CV Coach →</span>
+                    </button>
+                  </div>
+
+                  {/* Entry Point 3: Experience & Project Bullets List with "✨ Improve" Buttons */}
+                  {activeData.bullets && activeData.bullets.length > 0 && (
+                    <div className={`p-6 rounded-2xl border space-y-4 ${
+                      isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                    }`}>
+                      <div className="flex items-center justify-between border-b pb-3 border-cyan-900/30">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-2">
+                            <span>📝</span>
+                            <span>Experience &amp; Project Bullets Analysis</span>
+                          </h4>
+                          <p className={`text-[11px] mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                            Review detected bullet points from your CV. Click "✨ Improve" to launch targeted AI rewrites.
+                          </p>
+                        </div>
+                        <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg ${
+                          (activeData.weakBulletsCount || 0) > 0 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        }`}>
+                          {(activeData.weakBulletsCount || 0)} weak / {activeData.bullets.length} total
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {activeData.bullets.map((bullet, idx) => (
+                          <div
+                            key={bullet.id || idx}
+                            className={`p-3.5 rounded-xl border text-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                              bullet.is_weak
+                                ? isDark ? 'bg-rose-950/20 border-rose-800/40' : 'bg-rose-50/70 border-rose-200'
+                                : isDark ? 'bg-emerald-950/20 border-emerald-800/30' : 'bg-emerald-50/70 border-emerald-200'
+                            }`}
+                          >
+                            <div className="space-y-1.5 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded font-bold ${
+                                  bullet.section === 'Projects' ? 'bg-purple-500/20 text-purple-300' : 'bg-cyan-500/20 text-cyan-300'
+                                }`}>
+                                  {bullet.section || 'Experience'}
+                                </span>
+                                <span className={`text-[10px] font-extrabold ${bullet.is_weak ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                  {bullet.is_weak ? `⚠️ Weak (${bullet.impact_score_before || 4}/10)` : '✅ High Impact (9/10)'}
+                                </span>
+                                {bullet.is_weak && bullet.why_weak && (
+                                  <span className="text-[10px] text-slate-400 truncate max-w-xs">• {bullet.why_weak}</span>
+                                )}
+                              </div>
+                              <p className={`leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                                {bullet.text}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 flex items-center gap-2 self-end md:self-center">
+                              {bullet.is_weak ? (
+                                <button
+                                  onClick={() => handleOpenCoach(idx)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-400 hover:bg-cyan-300 text-[#05161A] transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                >
+                                  <span>✨</span>
+                                  <span>Improve</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleOpenCoach(idx)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border hover:border-cyan-400 transition-all flex items-center gap-1 ${
+                                    isDark ? 'border-cyan-900/60 text-cyan-300' : 'border-slate-300 text-slate-700'
+                                  }`}
+                                >
+                                  <span>✨</span>
+                                  <span>Refine</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW 3: Skill Gap Matrix */}
+              {dashboardTab === "skills" && (
+                <div className="animate-page space-y-6">
+                  <div className={`p-6 rounded-2xl border ${
+                    isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                  }`}>
+                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-cyan-900/30">
+                      <div>
+                        <h3 className="text-lg font-extrabold tracking-tight">Skill Gap Matrix (Demand vs. Supply)</h3>
+                        <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                          Extracted skill taxonomy matched against top 25 industry requirements for <strong className="font-bold text-slate-200 dark:text-cyan-200">{activeData.role}</strong>
+                        </p>
+                      </div>
+                      <div className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-bold shrink-0 ${
+                        isDark ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30' : 'bg-sky-100 text-sky-800 border-sky-200'
+                      }`}>
+                        {activeData.skillsFound} / {activeData.totalSkills} Skills Found
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Skills Found */}
-                      <div className={`p-4 rounded-xl border ${
+                      <div className={`p-5 rounded-2xl border ${
                         isDark ? 'bg-[#0B3039]/50 border-cyan-900/30' : 'bg-sky-50/60 border-sky-100'
                       }`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 text-emerald-500 dark:text-emerald-400">
-                            <span>✓</span> Detected in Resume ({activeData.skillsDetected.length})
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-2 text-emerald-500 dark:text-emerald-400">
+                            <span className="text-sm">✓</span> Detected in Resume ({activeData.skillsDetected.length})
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {activeData.skillsDetected.map((skill, i) => (
                             <span
                               key={i}
-                              className={`text-xs font-mono px-2.5 py-1 rounded-lg border font-medium ${
+                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold ${
                                 isDark
                                   ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
                                   : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -1336,19 +2490,19 @@
                       </div>
 
                       {/* Missing Recommended Skills */}
-                      <div className={`p-4 rounded-xl border ${
+                      <div className={`p-5 rounded-2xl border ${
                         isDark ? 'bg-[#0B3039]/50 border-cyan-900/30' : 'bg-sky-50/60 border-sky-100'
                       }`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
-                            <span>+</span> Recommended In-Demand Skills ({activeData.skillsMissing.length})
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-2 text-amber-500 dark:text-amber-400">
+                            <span className="text-sm">+</span> Recommended In-Demand Skills ({activeData.skillsMissing.length})
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {activeData.skillsMissing.map((skill, i) => (
                             <span
                               key={i}
-                              className={`text-xs font-mono px-2.5 py-1 rounded-lg border font-medium ${
+                              className={`text-xs font-mono px-3 py-1.5 rounded-xl border font-semibold ${
                                 isDark
                                   ? 'bg-amber-950/40 text-amber-300 border-amber-500/30'
                                   : 'bg-amber-50 text-amber-800 border-amber-200'
@@ -1361,88 +2515,157 @@
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* TAB 4: Parsed Text & Features */}
-                {activeTab === "parsed" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-base font-extrabold tracking-tight">Parsed Text & Structural Features</h3>
-                      <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
-                        Extracted linguistic vector passed into the classification head
-                      </p>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      {[
-                        { label: "Word Count", val: activeData.stats.words },
-                        { label: "Sentences", val: activeData.stats.sentences },
-                        { label: "Numbers Detected", val: activeData.stats.numbers },
-                        { label: "Action Verbs", val: activeData.stats.verbs },
-                        { label: "Readability Level", val: activeData.stats.readability }
-                      ].map((s, idx) => (
-                        <div key={idx} className={`p-3 rounded-xl border text-center ${
-                          isDark ? 'bg-[#0B3039]/50 border-cyan-900/30' : 'bg-sky-50 border-sky-100'
-                        }`}>
-                          <span className={`text-[10px] font-mono uppercase block ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
-                            {s.label}
-                          </span>
-                          <span className="text-lg font-black font-mono mt-1 block">
-                            {s.val}
-                          </span>
+              {/* VIEW 4: AI Model Lab */}
+              {dashboardTab === "model" && (
+                <div className="animate-page space-y-6">
+                  <div className={`p-6 rounded-2xl border ${
+                    isDark ? 'bg-[#08252C] border-cyan-800/40 shadow-xl' : 'bg-white border-sky-200 shadow-md'
+                  }`}>
+                    {/* Top-5 Distribution */}
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4 border-cyan-900/30">
+                        <div>
+                          <h3 className="text-lg font-extrabold tracking-tight">Top-5 Predicted Occupational Classes</h3>
+                          <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                            Softmax probability distribution output from the classification head across 24 classes
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                        <span className={`text-[11px] font-mono px-3 py-1.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
+                          isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' : 'bg-sky-100 text-sky-800 border border-sky-200'
+                        }`}>
+                          PyTorch Dual-Branch
+                        </span>
+                      </div>
 
-                    {/* OCR Text Preview Buffer */}
-                    <div className="space-y-2">
-                      <span className="text-xs font-mono uppercase font-bold tracking-wider">Sanitized OCR Buffer</span>
-                      <pre className={`p-4 rounded-xl border text-xs font-mono max-h-48 overflow-y-auto leading-relaxed ${
+                      {/* Bars */}
+                      <div className="space-y-4">
+                        {activeData.topRoles.map((role, idx) => (
+                          <div key={idx} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <div className="flex items-center gap-2">
+                                <span className={isDark ? 'text-cyan-400 font-bold' : 'text-slate-500'}>{idx + 1}.</span>
+                                <span className={`font-semibold ${role.isTop ? (isDark ? 'text-cyan-300 font-bold' : 'text-blue-900 font-bold') : ''}`}>
+                                  {role.name}
+                                </span>
+                                {role.isTop && (
+                                  <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                                    isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-blue-900 text-white'
+                                  }`}>
+                                    TOP MATCH
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold">{role.prob}%</span>
+                            </div>
+                            <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-[#05161A]' : 'bg-sky-100'}`}>
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${
+                                  role.isTop
+                                    ? isDark ? 'bg-gradient-to-r from-cyan-400 to-teal-300' : 'bg-blue-600'
+                                    : isDark ? 'bg-[#0B3039]' : 'bg-slate-300'
+                                }`}
+                                style={{ width: `${role.prob}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Attribution Callout */}
+                      <div className={`p-5 rounded-2xl border flex items-start gap-3.5 ${
                         isDark 
-                          ? 'bg-[#05161A] border-cyan-900/30 text-cyan-200/80' 
-                          : 'bg-slate-50 border-slate-200 text-slate-700'
+                          ? 'bg-[#05161A]/80 border-cyan-500/30 text-cyan-100' 
+                          : 'bg-sky-50 border-sky-200 text-slate-800'
                       }`}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-400/20 text-amber-500 font-bold text-base">
+                          💡
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-amber-500 dark:text-amber-400">
+                            Explainability Attribution: Why This Category?
+                          </h4>
+                          <p className="text-xs mt-1.5 leading-relaxed">
+                            {activeData.attribution}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Linguistic Stats */}
+                      <div className="pt-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider font-mono mb-3">Extracted Linguistic Vector Dimensions</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          {[
+                            { label: "Word Count", val: activeData.stats.words },
+                            { label: "Sentences", val: activeData.stats.sentences },
+                            { label: "Numbers Detected", val: activeData.stats.numbers },
+                            { label: "Action Verbs", val: activeData.stats.verbs },
+                            { label: "Readability Level", val: activeData.stats.readability }
+                          ].map((s, idx) => (
+                            <div key={idx} className={`p-3.5 rounded-xl border text-center ${
+                              isDark ? 'bg-[#0B3039]/50 border-cyan-900/30' : 'bg-sky-50 border-sky-100'
+                            }`}>
+                              <span className={`text-[10px] font-mono uppercase block ${isDark ? 'text-cyan-300/60' : 'text-slate-500'}`}>
+                                {s.label}
+                              </span>
+                              <span className="text-lg font-black font-mono mt-1 block">
+                                {s.val}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* OCR Buffer */}
+                      <div className="space-y-2 pt-2">
+                        <span className="text-xs font-mono uppercase font-bold tracking-wider">Sanitized OCR Buffer</span>
+                        <pre className={`p-4 rounded-xl border text-xs font-mono max-h-48 overflow-y-auto leading-relaxed ${
+                          isDark 
+                            ? 'bg-[#05161A] border-cyan-900/30 text-cyan-200/80' 
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}>
 {activeData.rawText 
-  ? `[DOCUMENT]: ${activeData.fileName} (${activeData.fileSize})\n[PREDICTED CATEGORY]: ${activeData.role} (${activeData.confidence})\n\n--- EXTRACTED RESUME TEXT ---\n${activeData.rawText}`
-  : `[PARSED HEADER]: ${activeData.name} | Role: ${activeData.role}\n[SECTIONS DETECTED]: Summary (present), Work Experience, Education, Skills, Projects.\n[SAMPLE EXTRACT]: Led architecture and deployment of high-throughput services handling 45k req/sec with 99.98% uptime SLA. Built CI/CD pipelines using Docker and Kubernetes.`}
-                      </pre>
+  ? `[DOCUMENT]: ${activeData.fileName} (${activeData.fileSize})
+[PREDICTED CATEGORY]: ${activeData.role} (${activeData.confidence})
+
+--- EXTRACTED RESUME TEXT ---
+${activeData.rawText}`
+  : `[PARSED HEADER]: ${activeData.name} | Role: ${activeData.role}
+[SECTIONS DETECTED]: Summary (present), Work Experience, Education, Skills, Projects.
+[SAMPLE EXTRACT]: Led architecture and deployment of high-throughput services handling 45k req/sec with 99.98% uptime SLA. Built CI/CD pipelines using Docker and Kubernetes.`}
+                        </pre>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="pt-4 border-t border-cyan-900/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <button
+                          onClick={handleExportJSON}
+                          className={`px-4 py-2 rounded-xl font-bold font-mono transition border ${
+                            isDark 
+                              ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20' 
+                              : 'bg-sky-100 text-sky-900 border-sky-300 hover:bg-sky-200'
+                          }`}
+                        >
+                          Export Diagnostic JSON
+                        </button>
+                        <button
+                          onClick={() => setShowReportModal(true)}
+                          className={`px-4 py-2 rounded-xl font-bold transition active:scale-95 ${
+                            isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-slate-900 text-white'
+                          }`}
+                        >
+                          View Viva Spec
+                        </button>
+                      </div>
                     </div>
                   </div>
-                )}
-
-              </div>
-
-              {/* Bottom Footer Bar */}
-              <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs ${
-                isDark 
-                  ? 'bg-[#08252C]/70 border-cyan-800/40 text-cyan-200/60' 
-                  : 'bg-white border-sky-200 text-slate-600 shadow-sm'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400"></span>
-                  <span>Evaluated against IEEE/ACM Software & Domain Taxonomy</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleExportJSON}
-                    className={`font-mono font-medium hover:underline ${isDark ? 'text-cyan-300' : 'text-blue-900'}`}
-                  >
-                    Export JSON Diagnostic
-                  </button>
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className={`px-3 py-1 rounded-lg font-bold text-xs transition active:scale-95 ${
-                    isDark ? 'bg-cyan-400 text-[#05161A]' : 'bg-slate-900 text-white'
-                  }`}>
-                    View Viva Spec
-                  </button>
-                </div>
-              </div>
+              )}
 
-            </section>
-          </main>
-
+            </main>
+          </div>
           {/* Technical Report Modal */}
           {showReportModal && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1483,6 +2706,14 @@
               </div>
             </div>
           )}
+
+          {/* AI Bullet Rewriter / CV Coach Widget (Portal mounted, removable with this single line) */}
+          <CVCoachWidget
+            isDark={isDark}
+            activeData={activeData}
+            onAcceptRewrite={handleAcceptRewrite}
+            externalTrigger={coachTrigger}
+          />
         </div>
       );
     }

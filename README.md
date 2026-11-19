@@ -190,6 +190,49 @@ The LaTeX source is `report/report.tex`; the compiled PDF is `report/report.pdf`
 `pdflatex report.tex` **twice** inside `report/` (the second run fills the table of contents), or upload
 `report.tex` together with the `figures/` folder to Overleaf.
 
+## AI Bullet Rewriter ("CV Coach")
+
+CVision includes an **AI Bullet Rewriter** presented as a guided chat popup ("CV Coach"). It looks and feels like an interactive chatbot (speech bubbles, typing indicator, quick-reply chips), but runs on a deterministic, scripted state machine. The LLM is invoked strictly to rewrite CV bullet points.
+
+### Key Capabilities
+- **Section-Aware Bullet Extraction:** Automatically extracts Experience and Projects bullet points from PDF uploads or pasted text, handling bullet glyphs (`•`, `-`, `*`), numbered lists, and multi-line wrapped text from messy PDF extraction.
+- **Rule-Based Weakness Detection (No LLM):** Evaluates bullets instantly using deterministic heuristics:
+  - Flags passive starters: *"responsible for"*, *"worked on"*, *"helped"*, *"assisted"*, *"involved in"*, *"duties included"*, etc.
+  - Flags missing metrics (absence of numbers, percentages, currency, scale).
+  - Flags bad length (<8 words or >30 words).
+  - Flags bullets not starting with a strong action verb from the curated 55-verb vocabulary.
+  - Assigns an initial impact score (1–10) and actionable explanation (`why_weak`).
+- **REST Endpoints (`app.py`):**
+  - `POST /api/rewrite`: Rewrites a single bullet into exactly 3 distinct styles (`Impact-Driven`, `Technical & Scaled`, `Concise Executive`) matching the requested tone (`impact`, `technical`, `concise`, `leadership`).
+  - `POST /api/rewrite-all`: Concurrently rewrites all weak bullets via `ThreadPoolExecutor` reusing the single-bullet logic (zero duplication).
+  - `POST /api/extract-bullets`: Extracts and classifies bullets from arbitrary text.
+- **Robustness & Fallbacks:**
+  - Fence stripping, schema validation, and automatic single retry.
+  - In-memory session cache per `(bullet, role, tone)`.
+  - Deterministic offline template rewriter fallback: works without API keys or internet connection during viva demos.
+  - Supports `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROQ_API_KEY` via standard library `urllib` (zero external npm/pip dependencies).
+- **Interactive UI (React 18 SPA):**
+  - **Entry Point 1:** Floating launcher button (bottom-right) with a live weak-bullet badge count.
+  - **Entry Point 2:** Scorecard recommendation banner card (*"{N} bullets can be improved → Chat with CV Coach"*).
+  - **Entry Point 3:** Per-bullet *"✨ Improve"* buttons in the Experience & Projects inspector.
+  - **Live Score Sync:** When the user clicks *"✨ Use this"*, the CV text updates, the scoring engine re-evaluates the resume in real time, and an animated before ➔ after score update is displayed (`68 ➔ 72 (+4 pts)`).
+  - **Metric Placeholders:** `[X%]` and `[N users]` placeholders are highlighted with an amber chip reminding the user to enter their actual numbers.
+
+### Running Unit Tests
+```bash
+# Run backend tests (bullet extraction, weak detection, /rewrite, caching, batch)
+python -m unittest discover tests
+
+# Run frontend state machine tests (chat reducer lifecycle, tone selection, acceptance flow)
+node --test tests/test_chat_reducer.js
+```
+
+### Clean Removal Note
+The feature is strictly additive. To completely remove the CV Coach popup and launcher from the UI, delete this single line from `static/index.html`:
+```jsx
+<CVCoachWidget isDark={isDark} activeData={activeData} onAcceptRewrite={handleAcceptRewrite} externalTrigger={coachTrigger} />
+```
+
 ## Team contributions
 
 | Member | Deliverables & Modules | Description |
