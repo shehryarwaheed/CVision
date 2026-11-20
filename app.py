@@ -12,6 +12,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import urllib.parse
 import webbrowser
@@ -28,6 +29,7 @@ from inference import (  # noqa: E402
     rewrite_bullet,
     rewrite_all_bullets,
 )
+from pdf_generator import build_ats_cv_pdf
 
 engine = CVisionInferenceEngine()
 STATIC_DIR = ROOT / "static"
@@ -73,11 +75,14 @@ class CVisionAppHandler(SimpleHTTPRequestHandler):
 
         return super().do_GET()
 
-    def do_OPTIONS(self):
-        self.send_response(HTTPStatus.OK)
+    def _send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    def do_OPTIONS(self):
+        self.send_response(HTTPStatus.OK)
+        self._send_cors_headers()
         self.end_headers()
 
     def do_POST(self):
@@ -160,6 +165,29 @@ class CVisionAppHandler(SimpleHTTPRequestHandler):
             self._send_json({"bullets": bullets, "count": len(bullets), "weakBulletsCount": weak_count})
             return
 
+        elif url.path in ("/api/export-pdf", "/export-pdf"):
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            try:
+                payload = json.loads(body.decode("utf-8")) if body else {}
+            except Exception:
+                self._send_json({"error": "Invalid JSON body provided."}, status=400)
+                return
+
+            try:
+                pdf_bytes = build_ats_cv_pdf(payload)
+                safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", payload.get("name", "Candidate"))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/pdf")
+                self.send_header("Content-Disposition", f'attachment; filename="Updated_CV_{safe_name}.pdf"')
+                self.send_header("Content-Length", str(len(pdf_bytes)))
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
+            except Exception as exc:
+                self._send_json({"error": f"PDF compilation failed: {str(exc)}"}, status=500)
+            return
+
         elif url.path == "/api/analyze":
             content_length = int(self.headers.get("Content-Length", 0))
             content_type = self.headers.get("Content-Type", "")
@@ -222,7 +250,7 @@ class CVisionAppHandler(SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(data)
 

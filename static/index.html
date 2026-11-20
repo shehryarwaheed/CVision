@@ -272,6 +272,36 @@
     }
 
     
+    
+    /* Green Glassmorphic Action Buttons */
+    .btn-glass-green {
+      background: rgba(16, 185, 129, 0.18) !important;
+      background-color: rgba(16, 185, 129, 0.18) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(52, 211, 153, 0.55) !important;
+      color: #34d399 !important;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25) !important;
+      font-weight: 700 !important;
+      border-radius: 99px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      cursor: pointer !important;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .btn-glass-green:hover {
+      background: rgba(16, 185, 129, 0.32) !important;
+      background-color: rgba(16, 185, 129, 0.32) !important;
+      border-color: rgba(52, 211, 153, 0.85) !important;
+      color: #6ee7b7 !important;
+      transform: translateY(-1.5px) !important;
+      box-shadow: 0 6px 22px rgba(16, 185, 129, 0.45) !important;
+    }
+    .btn-glass-green:active {
+      transform: scale(0.96) !important;
+    }
+
     /* Chatbot Close Button: Red background, Black cross icon */
     .coach-close-btn {
       background: #ef4444 !important;
@@ -1721,6 +1751,45 @@
         window.location.reload();
       };
 
+      const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+      const handleExportPDF = async () => {
+        setIsExportingPDF(true);
+        try {
+          const res = await fetch('/api/export-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: activeData.name || 'Candidate',
+              role: activeData.role || 'Software Engineer',
+              location: activeData.contact?.location || activeData.location || '',
+              phone: activeData.contact?.phone || activeData.phone || '',
+              email: activeData.contact?.email || activeData.email || '',
+              summary: activeData.summary || '',
+              rawText: activeData.rawText || '',
+              bullets: activeData.bullets || [],
+              skillsDetected: activeData.skillsDetected || [],
+              score: activeData.score,
+              tier: activeData.tier
+            })
+          });
+          if (!res.ok) throw new Error("PDF compilation failed");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          const safeName = (activeData.name || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_');
+          a.download = `Updated_CV_${safeName}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error("PDF export error:", err);
+          alert(`PDF Export: ${err.message || "Failed to download PDF."}`);
+        } finally {
+          setIsExportingPDF(false);
+        }
+      };
+
       // Upload & Paste State
       const [isUploading, setIsUploading] = useState(false);
       const [uploadMsg, setUploadMsg] = useState(null);
@@ -2308,6 +2377,8 @@
           }
         } else if (action === 'rewrite_all') {
           handleRewriteAll();
+        } else if (action === 'export_pdf') {
+          handleExportPDF();
         } else if (action === 'explain_score') {
           const b = activeData.breakdown;
           dispatchCoach({
@@ -2680,6 +2751,22 @@
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Green Glassmorphic Export PDF Button */}
+                    <button
+                      className="chip cv-btn-interactive btn-glass-green"
+                      onClick={handleExportPDF}
+                      title="Download ATS-Optimized CV as PDF with Rewritten Bullets"
+                      disabled={isExportingPDF}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                      </svg>
+                      <span>{isExportingPDF ? "Exporting PDF..." : "📄 Export PDF"}</span>
+                    </button>
+
                     {/* Export Diagnostic JSON Button */}
                     <button
                       className="chip cv-btn-interactive"
@@ -3314,6 +3401,24 @@
                                 </div>
                               </div>
                             ))}
+
+                            {/* Green Glassmorphic Download Updated PDF CTA */}
+                            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--bd)', display: 'flex', justifyContent: 'center' }}>
+                              <button
+                                className="btn-glass-green"
+                                onClick={handleExportPDF}
+                                style={{ padding: '9px 18px', fontSize: '12.5px', width: '100%', justifyContent: 'center' }}
+                                disabled={isExportingPDF}
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                  <polyline points="14 2 14 8 20 8"/>
+                                  <line x1="12" y1="18" x2="12" y2="12"/>
+                                  <line x1="9" y1="15" x2="15" y2="15"/>
+                                </svg>
+                                <span>{isExportingPDF ? "Exporting PDF..." : "📄 Download Updated ATS PDF →"}</span>
+                              </button>
+                            </div>
                           </div>
                         )}
 
@@ -3384,10 +3489,16 @@
                         ➔
                       </button>
                     </form>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="hint" style={{ fontSize: '11px' }}>
-                        Tip: type "technical", "concise", or "score"
-                      </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <button
+                        className="btn-glass-green"
+                        style={{ padding: '6px 14px', fontSize: '12px' }}
+                        onClick={handleExportPDF}
+                        disabled={isExportingPDF}
+                        title="Download Updated ATS CV as PDF"
+                      >
+                        📄 Download PDF
+                      </button>
                       <button
                         className="btn-rewrite-all"
                         style={{
