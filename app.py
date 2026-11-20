@@ -131,7 +131,13 @@ class CVisionAppHandler(SimpleHTTPRequestHandler):
                 return
 
             try:
-                results = rewrite_all_bullets(bullets=bullets, role=role, jd_keywords=jd_keywords, tone=tone)
+                normalized_bullets = []
+                for b in bullets:
+                    if isinstance(b, str):
+                        normalized_bullets.append({"text": b, "is_weak": True})
+                    elif isinstance(b, dict):
+                        normalized_bullets.append(dict(b))
+                results = rewrite_all_bullets(bullets=normalized_bullets, role=role, jd_keywords=jd_keywords, tone=tone)
                 self._send_json({"results": results, "count": len(results), "status": "completed"})
             except Exception as exc:
                 self._send_json({"error": f"Batch bullet rewrite failed: {str(exc)}"}, status=500)

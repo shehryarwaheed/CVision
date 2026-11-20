@@ -705,27 +705,35 @@ def compute_diagnostics(features: Dict[str, float]) -> Dict:
 
     breakdown = [
         {
+            "name": "Quantified Impact",
             "title": "Quantified Impact",
             "score": impact_score,
             "max": 30,
+            "pct": int(round((impact_score / 30.0) * 100)),
             "desc": f"{int(round(q_ratio * 100))}% sentences contain metric numbers. Target: 25%"
         },
         {
+            "name": "Section Completeness",
             "title": "Section Completeness",
             "score": section_score,
             "max": 30,
+            "pct": int(round((section_score / 30.0) * 100)),
             "desc": f"{int(sections)}/5 core sections detected (Experience, Education, Skills, Summary, Projects)."
         },
         {
+            "name": "Action Verb Density",
             "title": "Action Verb Density",
             "score": verb_score,
             "max": 20,
+            "pct": int(round((verb_score / 20.0) * 100)),
             "desc": f"{verbs:.1f} action verbs per 100 words. Target: 3.5"
         },
         {
+            "name": "Lexical Diversity",
             "title": "Lexical Diversity",
             "score": lex_score,
             "max": 20,
+            "pct": int(round((lex_score / 20.0) * 100)),
             "desc": f"Vocabulary diversity {lex:.2f} across opening 300 words. Target: 0.50"
         }
     ]
