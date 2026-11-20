@@ -20,6 +20,17 @@
       darkMode: 'class',
       theme: {
         extend: {
+          fontSize: {
+            'xs': ['11pt', { lineHeight: '1.55' }],      /* was 9pt (12px), +2pt = 11pt (~14.67px) */
+            'sm': ['12.5pt', { lineHeight: '1.55' }],    /* was 10.5pt (14px), +2pt = 12.5pt (~16.67px) */
+            'base': ['14pt', { lineHeight: '1.6' }],     /* was 12pt (16px), +2pt = 14pt (~18.67px) */
+            'lg': ['15.5pt', { lineHeight: '1.55' }],    /* was 13.5pt (18px), +2pt = 15.5pt (~20.67px) */
+            'xl': ['17pt', { lineHeight: '1.5' }],       /* was 15pt (20px), +2pt = 17pt (~22.67px) */
+            '2xl': ['20pt', { lineHeight: '1.4' }],      /* was 18pt (24px), +2pt = 20pt (~26.67px) */
+            '3xl': ['24.5pt', { lineHeight: '1.3' }],    /* was 22.5pt (30px), +2pt = 24.5pt (~32.67px) */
+            '4xl': ['29pt', { lineHeight: '1.2' }],      /* was 27pt (36px), +2pt = 29pt (~38.67px) */
+            '5xl': ['38pt', { lineHeight: '1.15' }]      /* was 36pt (48px), +2pt = 38pt (~50.67px) */
+          },
           colors: {
             deepNavy: '#05161A',
             panelNavy: '#08252C',
@@ -151,6 +162,63 @@
 
     *:not(.cv-motion):not(.cv-motion *) {
       transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    /* =========================================================================
+       Typography Scaling System: Content (+2 points) & Headings (+3 points)
+       ========================================================================= */
+
+    /* Arbitrary Content Sizing Tokens (+2pt = +2.67px) */
+    .text-\[9px\] { font-size: 8.75pt !important; }
+    .text-\[10px\] { font-size: 9.5pt !important; }
+    .text-\[11px\] { font-size: 10.25pt !important; }
+
+    /* Headings Typography Scale (+3 points throughout Project UI) */
+    h1, .h1 {
+      font-size: 30pt !important;
+      line-height: 1.15 !important;
+    }
+    @media (min-width: 640px) {
+      h1, .h1 { font-size: 39pt !important; }
+    }
+    @media (min-width: 768px) {
+      h1, .h1 { font-size: 43.5pt !important; }
+    }
+
+    h2, .h2 {
+      font-size: 13.5pt !important;
+      line-height: 1.35 !important;
+    }
+    h2.text-xs, h2[class*="text-xs"], h2[class*="text-\[12pt\]"] {
+      font-size: 12pt !important;
+    }
+    h2.text-sm, h2[class*="text-sm"], h2[class*="text-\[13.5pt\]"] {
+      font-size: 13.5pt !important;
+    }
+
+    h3, .h3 {
+      font-size: 16.5pt !important;
+      line-height: 1.35 !important;
+    }
+    h3.text-xs, h3[class*="text-xs"], h3[class*="text-\[12pt\]"] {
+      font-size: 12pt !important;
+    }
+    h3.text-base, h3[class*="text-base"], h3[class*="text-\[15pt\]"] {
+      font-size: 15pt !important;
+    }
+    h3.text-lg, h3[class*="text-lg"], h3[class*="text-\[16.5pt\]"] {
+      font-size: 16.5pt !important;
+    }
+
+    h4, .h4 {
+      font-size: 13.5pt !important;
+      line-height: 1.35 !important;
+    }
+    h4.text-xs, h4[class*="text-xs"], h4[class*="text-\[12pt\]"] {
+      font-size: 12pt !important;
+    }
+    h4.text-sm, h4[class*="text-sm"], h4[class*="text-\[13.5pt\]"] {
+      font-size: 13.5pt !important;
     }
     ::-webkit-scrollbar {
       width: 6px;
@@ -1708,7 +1776,7 @@
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#08252C]" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-xs font-mono tracking-wider flex items-center gap-1.5">
+                    <h3 className="font-extrabold text-[12pt] font-mono tracking-wider flex items-center gap-1.5">
                       <span>CV COACH</span>
                       <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-400/30 font-sans">
                         AI Rewriter
@@ -2094,7 +2162,7 @@
                     {/* Typography Hierarchy */}
                     <div className="space-y-4 max-w-3xl">
                       {/* Primary Hook Line with Masked Reveals */}
-                      <h1 className="text-4xl sm:text-5xl md:text-[54px] font-extrabold tracking-tight leading-[1.12]">
+                      <h1 className="text-[30pt] sm:text-[39pt] md:text-[43.5pt] font-extrabold tracking-tight leading-[1.12]">
                         <span className={`block cv-mask-line ${isDark ? 'text-white' : 'text-slate-900'}`}>
                           <span className="cv-mask-inner">Your CV deserves better than</span>
                         </span>
@@ -2579,7 +2647,7 @@
                         <div className="flex items-center gap-2.5">
                           <span className="text-xl cv-float-icon">📤</span>
                           <div>
-                            <h2 className="text-sm font-bold uppercase tracking-wider font-mono">Resume Document Input</h2>
+                            <h2 className="text-[13.5pt] font-bold uppercase tracking-wider font-mono">Resume Document Input</h2>
                             <p className={`text-xs ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>Upload candidate CV for instant multi-branch feature extraction</p>
                           </div>
                         </div>
@@ -2697,7 +2765,7 @@
                     <div className={`p-5 rounded-2xl cv-glass-subcard ${
                       isDark ? 'text-white' : 'text-slate-800'
                     }`}>
-                      <h2 className="text-xs font-bold uppercase tracking-wider font-mono mb-3">Model Inference Engine</h2>
+                      <h2 className="text-[12pt] font-bold uppercase tracking-wider font-mono mb-3">Model Inference Engine</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition ${
                           modelType === 'dual'
@@ -2787,7 +2855,7 @@
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <span className="text-amber-400 font-bold text-lg cv-float-icon">⚡</span>
-                          <h2 className="text-sm font-bold uppercase tracking-wider font-mono">Viva Demo Presets</h2>
+                          <h2 className="text-[13.5pt] font-bold uppercase tracking-wider font-mono">Viva Demo Presets</h2>
                         </div>
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
                           isDark ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' : 'bg-sky-100 text-sky-800 border border-sky-200'
@@ -2931,7 +2999,7 @@
                           <span className="text-cyan-400 text-base cv-float-icon">📈</span>
                         </div>
                         <div className="mt-3">
-                          <h3 className="text-lg font-extrabold tracking-tight truncate">{activeData.role}</h3>
+                          <h3 className="text-[16.5pt] font-extrabold tracking-tight truncate">{activeData.role}</h3>
                           <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             24 trained occupational classes
                           </p>
@@ -3022,7 +3090,7 @@
                     isDark ? 'text-white' : 'text-slate-800'
                   }`}>
                     <div className="mb-4">
-                      <h3 className="text-base font-extrabold tracking-tight">Transparent 4-Factor Heuristic Breakdown</h3>
+                      <h3 className="text-[15pt] font-extrabold tracking-tight">Transparent 4-Factor Heuristic Breakdown</h3>
                       <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                         Scoring matrix based on quantifiable structural and linguistic deliverables
                       </p>
@@ -3067,7 +3135,7 @@
                   <div className={`p-6 rounded-2xl space-y-3.5 cv-reveal cv-spotlight cv-card-sheen cv-card-glow cv-glass-card relative overflow-hidden ${
                     isDark ? 'text-white' : 'text-slate-800'
                   }`}>
-                    <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Actionable Diagnostic Feedback</h4>
+                    <h4 className="text-[12pt] font-bold uppercase tracking-wider font-mono">Actionable Diagnostic Feedback</h4>
                     <div className="space-y-2.5 text-xs">
                       {activeData.strengths.map((str, i) => (
                         <div key={i} className="flex items-start gap-2.5 text-emerald-600 dark:text-emerald-400">
@@ -3115,7 +3183,7 @@
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold font-mono text-[#8B7CFF] tracking-wide uppercase">AI Bullet Coach</h4>
+                          <h4 className="text-[13.5pt] font-bold font-mono text-[#8B7CFF] tracking-wide uppercase">AI Bullet Coach</h4>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                             {activeData.weakBulletsCount || (activeData.bullets ? activeData.bullets.filter(b => b.is_weak).length : 0)} Bullets Can Be Improved
                           </span>
@@ -3141,7 +3209,7 @@
                     }`}>
                       <div className="flex items-center justify-between border-b pb-3 border-cyan-900/30">
                         <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-2">
+                          <h4 className="text-[12pt] font-bold uppercase tracking-wider font-mono flex items-center gap-2">
                             <span>📝</span>
                             <span>Experience &amp; Project Bullets Analysis</span>
                           </h4>
@@ -3222,7 +3290,7 @@
                   }`}>
                     <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4 border-cyan-900/30">
                       <div>
-                        <h3 className="text-lg font-extrabold tracking-tight">Skill Gap Matrix (Demand vs. Supply)</h3>
+                        <h3 className="text-[16.5pt] font-extrabold tracking-tight">Skill Gap Matrix (Demand vs. Supply)</h3>
                         <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
                           Extracted skill taxonomy matched against top 25 industry requirements for <strong className="font-bold text-slate-200 dark:text-cyan-200">{activeData.role}</strong>
                         </p>
@@ -3305,7 +3373,7 @@
                     <div className="space-y-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-4 border-cyan-900/30">
                         <div>
-                          <h3 className="text-lg font-extrabold tracking-tight">Top-5 Predicted Occupational Classes</h3>
+                          <h3 className="text-[16.5pt] font-extrabold tracking-tight">Top-5 Predicted Occupational Classes</h3>
                           <p className={`text-xs mt-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
                             Softmax probability distribution output from the classification head across 24 classes
                           </p>
@@ -3357,7 +3425,7 @@
                           💡
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-amber-500 dark:text-amber-400">
+                          <h4 className="text-[12pt] font-bold uppercase tracking-wider font-mono text-amber-500 dark:text-amber-400">
                             Explainability Attribution: Why This Category?
                           </h4>
                           <p className="text-xs mt-1.5 leading-relaxed">
@@ -3368,7 +3436,7 @@
 
                       {/* Linguistic Stats */}
                       <div className="pt-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wider font-mono mb-3">Extracted Linguistic Vector Dimensions</h4>
+                        <h4 className="text-[12pt] font-bold uppercase tracking-wider font-mono mb-3">Extracted Linguistic Vector Dimensions</h4>
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                           {[
                             { label: "Word Count", val: activeData.stats.words },
@@ -3446,7 +3514,7 @@ ${activeData.rawText}`
                 isDark ? 'text-white' : 'text-slate-900'
               }`}>
                 <div className="flex items-center justify-between border-b pb-3 border-cyan-900/30">
-                  <h3 className="font-extrabold text-lg flex items-center gap-2">
+                  <h3 className="font-extrabold text-[16.5pt] flex items-center gap-2">
                     <span>📑</span> Technical Report & Model Architecture
                   </h3>
                   <button 
